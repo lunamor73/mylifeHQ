@@ -41,7 +41,7 @@
     .page {
       position: fixed; inset: 0;
       display: flex; flex-direction: column; align-items: center;
-      overflow-y: scroll; overflow-x: hidden; scrollbar-width: none; -ms-overflow-style: none;
+      overflow-y: scroll; scrollbar-width: none; -ms-overflow-style: none;
       opacity: 0; pointer-events: none;
       transform: translateX(40px);
       transition: opacity 0.22s ease, transform 0.22s ease;
@@ -611,7 +611,7 @@ function nav(id) {
     if (id === 'p3l') {
       setTimeout(() => {
         const g = document.querySelector('.luna-grid');
-        if (g) g.style.width = window.innerWidth + 'px';
+        const w = window.innerWidth; if (g) { g.style.width = w + 'px'; g.dataset.dbg = 'w='+w+'px scr='+screen.width; }
       }, 50);
     }
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
