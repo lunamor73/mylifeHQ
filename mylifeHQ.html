@@ -156,7 +156,6 @@
 
     /* ══ PAGE 3L: LUNA DOMAINS — 3×3 ICON GRID ══ */
     #p3l { align-items: stretch; }
-    #p3l { align-items: stretch; }
     .luna-grid {
       padding: 20px;
       display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px;
@@ -609,6 +608,12 @@ initTideMoon();
 
 // ─── NAV ───
 function nav(id) {
+    if (id === 'p3l') {
+      setTimeout(() => {
+        const g = document.querySelector('.luna-grid');
+        if (g) g.style.width = window.innerWidth + 'px';
+      }, 50);
+    }
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
   const pg = document.getElementById(id);
   pg.classList.add('active');
