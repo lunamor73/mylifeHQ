@@ -1604,8 +1604,8 @@ function moonSVG(phaseDays, size) {
   else                         d = `M ${cx},${top} A ${r},${r} 0 0,0 ${cx},${bot} A ${txAbs},${r} 0 0,1 ${cx},${top}`;
 
   return `<svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}">
-    <circle cx="${cx}" cy="${cy}" r="${r}" fill="${dark}" stroke="${rim}" stroke-width="0.7"/>
-    <path d="${d}" fill="${lit}"/>
+    <circle cx="${cx}" cy="${cy}" r="${r}" fill="${lit}" stroke="${rim}" stroke-width="0.7"/>
+    <path d="${d}" fill="${dark}"/>
   </svg>`;
 }
 
