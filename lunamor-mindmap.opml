@@ -1,0 +1,133 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<opml version="2.0">
+  <head>
+    <title>PENGUIN HQ</title>
+  </head>
+  <body>
+    <outline text="PENGUIN HQ" note="Penguinhq.png">
+
+      <outline text="LUNAMOR (PTY LTD)" note="lunamorptyltd.png">
+
+        <outline text="LUNAVĀ (Creative Practice)" note="vá.png">
+          <outline text="SlapDanceSing" note="slapdancesing.png"/>
+          <outline text="Sticking" note="sticking.png"/>
+          <outline text="Low Boy" note="lowboy.png"/>
+          <outline text="Booty Shaker" note="bootyshaker.png"/>
+          <outline text="MIDI Mat" note="midimat.png"/>
+          <outline text="Ethno Jazz" note="ethnostrings.png"/>
+          <outline text="Writing" note="writing.png"/>
+          <outline text="Clown Secret" note="clown.png"/>
+          <outline text="Strumming" note="strumming.png"/>
+          <outline text="Case Unknown" note="caseunknown.png"/>
+        </outline>
+
+        <outline text="LUNAWĀN (Learning &amp; R&amp;D)" note="Mentoring.png">
+          <outline text="Audio" note="audio.png">
+            <outline text="Signal chain / UAD" note="audio.png"/>
+            <outline text="Live rig setup" note="audio.png"/>
+            <outline text="Lowboy set" note="lowboy.png"/>
+          </outline>
+          <outline text="Creative Mentoring" note="Mentoring.png">
+            <outline text="I.S.A.A.C. — Ira Seidenstein" note="Mentoring.png"/>
+            <outline text="Level Up Club — Francesca" note="Mentoring.png"/>
+          </outline>
+        </outline>
+
+        <outline text="LUNATIR (Community)" note="IT.png">
+          <outline text="Gigs &amp; performances" note="IT.png"/>
+          <outline text="Workshops &amp; teaching" note="IT.png"/>
+          <outline text="Community events" note="IT.png"/>
+          <outline text="Collaborations" note="IT.png"/>
+        </outline>
+
+        <outline text="LUNAAMA (Admin &amp; Ops)" note="admin.png">
+          <outline text="Scheduling &amp; calendar" note="admin.png"/>
+          <outline text="Contracts &amp; agreements" note="admin.png"/>
+          <outline text="Logistics &amp; operations" note="admin.png"/>
+        </outline>
+
+        <outline text="LUNALUME (Comms &amp; Voice)" note="Penguinhq.png">
+          <outline text="Email &amp; correspondence"/>
+          <outline text="Social media"/>
+          <outline text="Press &amp; media"/>
+        </outline>
+
+        <outline text="LUNACÁI (Finance)" note="finance.png">
+          <outline text="Invoicing" note="finance.png"/>
+          <outline text="Expenses" note="finance.png"/>
+          <outline text="Tax &amp; accounting" note="finance.png"/>
+        </outline>
+
+        <outline text="LUNAFAM (People &amp; Network)" note="network.png">
+          <outline text="Team &amp; collaborators" note="network.png"/>
+          <outline text="Network &amp; contacts" note="network.png"/>
+          <outline text="Community relationships" note="network.png"/>
+        </outline>
+
+        <outline text="LUNADÁN (Vision &amp; Strategy)" note="Penguinhq.png">
+          <outline text="Goals &amp; targets"/>
+          <outline text="Planning &amp; roadmap"/>
+          <outline text="Key decisions"/>
+        </outline>
+
+        <outline text="LUNACOF (Memory &amp; Archive)" note="Penguinhq.png">
+          <outline text="Recording &amp; documentation"/>
+          <outline text="Photo &amp; media archive"/>
+          <outline text="Legacy &amp; history"/>
+        </outline>
+
+      </outline>
+
+      <outline text="Family" note="family.png">
+        <outline text="Mum Care">
+          <outline text="SAHP — Care package"/>
+          <outline text="Appointments"/>
+          <outline text="Practical support"/>
+          <outline text="Mum's wellbeing"/>
+        </outline>
+        <outline text="Legacy">
+          <outline text="Mum's stories"/>
+          <outline text="Memory archive"/>
+          <outline text="Life &amp; legacy"/>
+        </outline>
+        <outline text="Others">
+          <outline text="Woody" note="family.png"/>
+          <outline text="Sisters" note="family.png"/>
+        </outline>
+      </outline>
+
+      <outline text="Wellbeing" note="wellbeing.png">
+        <outline text="Movement">
+          <outline text="Tai Chi — 18 Form Qi Gong" note="taichi.png"/>
+        </outline>
+        <outline text="Ocean">
+          <outline text="Surf" note="surf.png"/>
+          <outline text="Kayak" note="kayak.png"/>
+          <outline text="Freedive" note="freediving.png"/>
+        </outline>
+        <outline text="Mind &amp; Spirit">
+          <outline text="The Great Learning" note="thegreatlearning.png"/>
+        </outline>
+      </outline>
+
+      <outline text="Home" note="admin.png">
+        <outline text="Estate &amp; Inheritance">
+          <outline text="What is inherited"/>
+          <outline text="Property sale"/>
+          <outline text="Legal &amp; estate admin"/>
+        </outline>
+        <outline text="Land &amp; Investment">
+          <outline text="Land research"/>
+          <outline text="Investment planning" note="finance.png"/>
+          <outline text="Finance options" note="finance.png"/>
+        </outline>
+        <outline text="Future Living">
+          <outline text="Own chapter vision"/>
+          <outline text="Location research"/>
+          <outline text="Community &amp; lifestyle" note="network.png"/>
+        </outline>
+      </outline>
+
+    </outline>
+  </body>
+</opml>
