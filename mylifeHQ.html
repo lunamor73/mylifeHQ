@@ -1634,7 +1634,63 @@ function tideSVG(state, size) {
   return `<svg width="${w}" height="${h}" viewBox="0 0 ${w} ${h}">${waves}${arrow}</svg>`;
 }
 
-function moonSVG(phaseDays, size) {
+function getMoonElevation(lat, lon) {
+  const now = new Date();
+  const JD  = 2440587.5 + now.getTime() / 86400000;
+  const D   = JD - 2451545.0;
+
+  // Moon ecliptic position (Jean Meeus simplified)
+  const L = 218.316 + 13.176396 * D;
+  const M = 134.963 + 13.064993 * D;
+  const F = 93.272  + 13.229350 * D;
+  const Mrad = (M % 360) * Math.PI / 180;
+  const Frad = (F % 360) * Math.PI / 180;
+  const Lmod = L % 360;
+
+  const lam = Lmod + 6.289 * Math.sin(Mrad);
+  const bet = 5.128 * Math.sin(Frad);
+  const eps = 23.439;
+
+  const lamR = lam * Math.PI / 180;
+  const betR = bet * Math.PI / 180;
+  const epsR = eps * Math.PI / 180;
+
+  // Equatorial coords
+  const ra  = Math.atan2(Math.sin(lamR)*Math.cos(epsR) - Math.tan(betR)*Math.sin(epsR), Math.cos(lamR)) * 180 / Math.PI;
+  const dec = Math.asin(Math.sin(betR)*Math.cos(epsR) + Math.cos(betR)*Math.sin(epsR)*Math.sin(lamR)) * 180 / Math.PI;
+
+  // Local sidereal time
+  const T    = D / 36525;
+  const GMST = 280.46061837 + 360.98564736629 * D + 0.000387933 * T * T;
+  const LST  = ((GMST + lon) % 360 + 360) % 360;
+  const HA   = ((LST - ra) % 360 + 360) % 360;
+
+  const HARad  = HA  * Math.PI / 180;
+  const latRad = lat * Math.PI / 180;
+  const decRad = dec * Math.PI / 180;
+
+  return Math.asin(
+    Math.sin(latRad)*Math.sin(decRad) + Math.cos(latRad)*Math.cos(decRad)*Math.cos(HARad)
+  ) * 180 / Math.PI;
+}
+
+function moonGradientColors(elevDeg) {
+  // Below horizon or unknown: warm cream default
+  if (elevDeg === null || elevDeg === undefined) return { bot: '#e8d060', top: '#fffff0' };
+  const t = Math.max(0, Math.min(1, elevDeg / 55)); // 0=horizon, 1=high
+  // Bottom: orange-yellow → white
+  const br = Math.round(232 + (255-232)*t);
+  const bg = Math.round(190 + (255-190)*t);
+  const bb = Math.round(60  + (255-60)*t);
+  // Top: yellow → white (faster)
+  const t2 = Math.max(0, Math.min(1, elevDeg / 35));
+  const tr = Math.round(245 + (255-245)*t2);
+  const tg = Math.round(235 + (255-235)*t2);
+  const tb = Math.round(140 + (255-140)*t2);
+  return { bot: `rgb(${br},${bg},${bb})`, top: `rgb(${tr},${tg},${tb})` };
+}
+
+function moonSVG(phaseDays, size, elevDeg) {
   const synodic = 29.53058867;
   const phase   = phaseDays / synodic;
   const illum   = (1 - Math.cos(2 * Math.PI * phase)) / 2;
@@ -1645,22 +1701,26 @@ function moonSVG(phaseDays, size) {
   const dark = '#0b0a09';
   const rim  = '#3a3830';
   const txAbs = Math.abs(Math.cos(2 * Math.PI * phase)) * r;
-  const uid = 'ms' + Math.random().toString(36).slice(2,6);
+  const uid  = 'ms' + Math.random().toString(36).slice(2,6);
+  const cols = moonGradientColors(elevDeg);
 
   const defs = `<defs>
-    <radialGradient id="mg${uid}" cx="40%" cy="35%" r="62%">
-      <stop offset="0%"   stop-color="#e2ddd6"/>
-      <stop offset="40%"  stop-color="#c4bdb2"/>
-      <stop offset="75%"  stop-color="#9a9088"/>
-      <stop offset="100%" stop-color="#5a5248"/>
+    <linearGradient id="lg${uid}" x1="0" y1="1" x2="0" y2="0">
+      <stop offset="0%"   stop-color="${cols.bot}"/>
+      <stop offset="100%" stop-color="${cols.top}"/>
+    </linearGradient>
+    <radialGradient id="rg${uid}" cx="50%" cy="50%" r="50%">
+      <stop offset="55%"  stop-color="rgba(0,0,0,0)"/>
+      <stop offset="100%" stop-color="rgba(0,0,0,0.42)"/>
     </radialGradient>
     <filter id="fx${uid}" x="-5%" y="-5%" width="110%" height="110%">
-      <feTurbulence type="fractalNoise" baseFrequency="0.65" numOctaves="4" seed="8" result="noise"/>
+      <feTurbulence type="fractalNoise" baseFrequency="0.62" numOctaves="4" seed="8" result="noise"/>
       <feColorMatrix type="saturate" values="0" in="noise" result="grey"/>
       <feComponentTransfer in="grey" result="dimmed">
-        <feFuncR type="linear" slope="0.18" intercept="0.0"/>
-        <feFuncG type="linear" slope="0.18" intercept="0.0"/>
-        <feFuncB type="linear" slope="0.18" intercept="0.0"/>
+        <feFuncR type="linear" slope="0.13" intercept="0"/>
+        <feFuncG type="linear" slope="0.13" intercept="0"/>
+        <feFuncB type="linear" slope="0.13" intercept="0"/>
+        <feFuncA type="linear" slope="0.6" intercept="0"/>
       </feComponentTransfer>
       <feBlend in="SourceGraphic" in2="dimmed" mode="multiply" result="textured"/>
       <feComposite in="textured" in2="SourceGraphic" operator="in"/>
@@ -1668,13 +1728,16 @@ function moonSVG(phaseDays, size) {
     <clipPath id="cp${uid}"><path d="PATH"/></clipPath>
   </defs>`;
 
-  const litCircle = `<circle cx="${cx}" cy="${cy}" r="${r}" fill="url(#mg${uid})" filter="url(#fx${uid})"/>`;
-  const darkOver  = `<circle cx="${cx}" cy="${cy}" r="${r}" fill="${dark}" clip-path="url(#cp${uid})"/>`;
-  const rimCircle = `<circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="${rim}" stroke-width="0.8"/>`;
-  const fullLit   = `<circle cx="${cx}" cy="${cy}" r="${r}" fill="url(#mg${uid})" filter="url(#fx${uid})"/>`;
+  const litBase  = `<circle cx="${cx}" cy="${cy}" r="${r}" fill="url(#lg${uid})" filter="url(#fx${uid})"/>`;
+  const limbDark = `<circle cx="${cx}" cy="${cy}" r="${r}" fill="url(#rg${uid})"/>`;
+  const darkOver = `<circle cx="${cx}" cy="${cy}" r="${r}" fill="${dark}" clip-path="url(#cp${uid})"/>`;
+  const rimCirc  = `<circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="${rim}" stroke-width="0.8"/>`;
+  const newMoon  = `<circle cx="${cx}" cy="${cy}" r="${r}" fill="${dark}" stroke="${rim}" stroke-width="0.6"/>`;
 
-  if (illum < 0.01) return `<svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}"><circle cx="${cx}" cy="${cy}" r="${r}" fill="${dark}" stroke="${rim}" stroke-width="0.6"/></svg>`;
-  if (illum > 0.99) return `<svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}">${defs.replace('<path d="PATH"/>','')}${fullLit}${rimCircle}</svg>`;
+  if (illum < 0.01) return `<svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}">${newMoon}</svg>`;
+
+  const fullDefs = defs.replace('<path d="PATH"/>', '');
+  if (illum > 0.99) return `<svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}">${fullDefs}${litBase}${limbDark}${rimCirc}</svg>`;
 
   let d;
   if (waxing && illum <= 0.5)      d = `M ${cx},${top} A ${r},${r} 0 0,1 ${cx},${bot} A ${txAbs},${r} 0 0,1 ${cx},${top}`;
@@ -1683,7 +1746,7 @@ function moonSVG(phaseDays, size) {
   else                              d = `M ${cx},${top} A ${r},${r} 0 0,0 ${cx},${bot} A ${txAbs},${r} 0 0,1 ${cx},${top}`;
 
   const defsWithPath = defs.replace('<path d="PATH"/>', `<path d="${d}"/>`);
-  return `<svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}">${defsWithPath}${litCircle}${darkOver}${rimCircle}</svg>`;
+  return `<svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}">${defsWithPath}${litBase}${limbDark}${darkOver}${rimCirc}</svg>`;
 }
 
 // ─── TIDE STATE from extremes ───
@@ -1766,6 +1829,9 @@ async function initTideMoon() {
   if (!navigator.geolocation) return;
   navigator.geolocation.getCurrentPosition(async pos => {
     const { latitude: lat, longitude: lng } = pos.coords;
+    const elev = getMoonElevation(lat, lng);
+    const moonEl = document.getElementById('moon-em');
+    if (moonEl) moonEl.innerHTML = moonSVG(moon.phaseDays, 72, elev);
     const extremes = await fetchTides(lat, lng);
     const tideState = extremes ? parseTideState(extremes) : null;
     updateTideMoonUI(tideState, moon);
