@@ -158,7 +158,7 @@
     #p3l { align-items: stretch; }
     .luna-grid {
       padding: 20px;
-      display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px;
+      display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px;
       box-sizing: border-box;
     }
     .luna-gtile {
@@ -192,7 +192,7 @@
     }
 
     /* Icon grid */
-    .disc-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+    .disc-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
     .dc { display: flex; flex-direction: column; align-items: center; gap: 8px; cursor: pointer; }
     .dc-ring {
       width: 100%; aspect-ratio: 1; max-width: 110px; border-radius: 50%;
