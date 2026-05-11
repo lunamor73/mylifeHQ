@@ -1583,30 +1583,41 @@ function getMoonPhase() {
 // ─── SEPIA MOON SVG ───
 function moonSVG(phaseDays, size) {
   const synodic = 29.53058867;
-  const phase   = phaseDays / synodic;            // 0–1
+  const phase   = phaseDays / synodic;
   const illum   = (1 - Math.cos(2 * Math.PI * phase)) / 2;
   const waxing  = phase <= 0.5;
   const r  = (size - 2) / 2;
   const cx = size / 2, cy = size / 2;
   const top = cy - r, bot = cy + r;
-  const lit  = '#f7f5e5';
-  const dark = '#1a1208';
-  const rim  = '#d4c9a0';
+  const dark = '#0e0d0c';
+  const rim  = '#555244';
   const txAbs = Math.abs(Math.cos(2 * Math.PI * phase)) * r;
+  const uid = 'ms' + Math.random().toString(36).slice(2,6);
 
-  if (illum < 0.01) return `<svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}"><circle cx="${cx}" cy="${cy}" r="${r}" fill="${dark}" stroke="${rim}" stroke-width="0.8"/></svg>`;
-  if (illum > 0.99) return `<svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}"><circle cx="${cx}" cy="${cy}" r="${r}" fill="${lit}" stroke="${rim}" stroke-width="0.4"/></svg>`;
+  const defs = `<defs>
+    <radialGradient id="${uid}" cx="42%" cy="38%" r="58%">
+      <stop offset="0%"   stop-color="#ddd8ce"/>
+      <stop offset="55%"  stop-color="#b0a898"/>
+      <stop offset="100%" stop-color="#706860"/>
+    </radialGradient>
+    <clipPath id="c${uid}"><path d="PATH"/></clipPath>
+  </defs>`;
+
+  const darkCircle = `<circle cx="${cx}" cy="${cy}" r="${r}" fill="${dark}" stroke="${rim}" stroke-width="0.6"/>`;
+  const litCircle  = `<circle cx="${cx}" cy="${cy}" r="${r}" fill="url(#${uid})" clip-path="url(#c${uid})"/>`;
+  const fullCircle = `<circle cx="${cx}" cy="${cy}" r="${r}" fill="url(#${uid})" stroke="${rim}" stroke-width="0.4"/>`;
+
+  if (illum < 0.01) return `<svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}">${darkCircle}</svg>`;
+  if (illum > 0.99) return `<svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}">${defs.replace('<path d="PATH"/>','<path d="M0,0"/>')}${fullCircle}</svg>`;
 
   let d;
-  if (waxing && illum <= 0.5) d = `M ${cx},${top} A ${r},${r} 0 0,1 ${cx},${bot} A ${txAbs},${r} 0 0,1 ${cx},${top}`;
-  else if (waxing)             d = `M ${cx},${top} A ${r},${r} 0 0,1 ${cx},${bot} A ${txAbs},${r} 0 0,0 ${cx},${top}`;
-  else if (illum <= 0.5)       d = `M ${cx},${top} A ${r},${r} 0 0,0 ${cx},${bot} A ${txAbs},${r} 0 0,0 ${cx},${top}`;
-  else                         d = `M ${cx},${top} A ${r},${r} 0 0,0 ${cx},${bot} A ${txAbs},${r} 0 0,1 ${cx},${top}`;
+  if (waxing && illum <= 0.5)      d = `M ${cx},${top} A ${r},${r} 0 0,1 ${cx},${bot} A ${txAbs},${r} 0 0,1 ${cx},${top}`;
+  else if (waxing)                  d = `M ${cx},${top} A ${r},${r} 0 0,1 ${cx},${bot} A ${txAbs},${r} 0 0,0 ${cx},${top}`;
+  else if (illum <= 0.5)            d = `M ${cx},${top} A ${r},${r} 0 0,0 ${cx},${bot} A ${txAbs},${r} 0 0,0 ${cx},${top}`;
+  else                              d = `M ${cx},${top} A ${r},${r} 0 0,0 ${cx},${bot} A ${txAbs},${r} 0 0,1 ${cx},${top}`;
 
-  return `<svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}">
-    <circle cx="${cx}" cy="${cy}" r="${r}" fill="${lit}" stroke="${rim}" stroke-width="0.7"/>
-    <path d="${d}" fill="${dark}"/>
-  </svg>`;
+  const defsWithPath = defs.replace('<path d="PATH"/>', `<path d="${d}"/>`);
+  return `<svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}">${defsWithPath}${darkCircle}${litCircle}</svg>`;
 }
 
 // ─── TIDE STATE from extremes ───
