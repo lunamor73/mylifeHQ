@@ -41,7 +41,7 @@
     .page {
       position: fixed; inset: 0;
       display: flex; flex-direction: column; align-items: center;
-      overflow-y: auto; overflow-x: hidden;
+      overflow-y: scroll; overflow-x: hidden; scrollbar-width: none; -ms-overflow-style: none;
       opacity: 0; pointer-events: none;
       transform: translateX(40px);
       transition: opacity 0.22s ease, transform 0.22s ease;
