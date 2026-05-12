@@ -920,6 +920,7 @@ function buildCheckin(key) {
 
   const relPanel = mk('div'); relPanel.className = 'related-panel'; relPanel.id = 'related-panel';
   body.appendChild(relPanel);
+  if (cachedTideMoon) updateTideMoonUI(cachedTideMoon.tideState, cachedTideMoon.moon);
 }
 
 function mk(tag) { return document.createElement(tag); }
@@ -1801,6 +1802,7 @@ async function fetchTides(lat, lng) {
 
 // ─── UPDATE UI ───
 function updateTideMoonUI(tideState, moon) {
+  cachedTideMoon = { tideState, moon };
   // Home bar
   const moonEm  = document.getElementById('moon-em');
   const moonLbl = document.getElementById('moon-lbl');
@@ -1823,6 +1825,8 @@ function updateTideMoonUI(tideState, moon) {
     ctx.textContent = txt;
   }
 }
+
+let cachedTideMoon = null;
 
 // ─── INIT TIDE + MOON ───
 async function initTideMoon() {
