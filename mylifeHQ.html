@@ -95,8 +95,11 @@
     }
     .p1-ins:active { color: var(--gold); border-color: var(--gold); }
 
+    .p1-btn-row {
+      margin-top: 28px; display: flex; gap: 10px; justify-content: center;
+    }
     .p1-oracle {
-      margin-top: 28px;
+      flex: 1; max-width: 160px;
       padding: 13px 28px; border-radius: 12px;
       border: 1.5px solid var(--gold); background: var(--gold-dim);
       color: var(--gold); font-size: 13px; font-weight: 700;
@@ -105,6 +108,11 @@
       transition: background 0.15s;
     }
     .p1-oracle:active { background: var(--gold); color: #fff; }
+    .p1-mundus {
+      border-color: var(--muted); background: rgba(136,136,136,0.08);
+      color: var(--muted);
+    }
+    .p1-mundus:active { background: var(--muted); color: #fff; }
 
     .oracle-toast {
       display: none; margin-top: 12px;
@@ -235,6 +243,54 @@
     .toggle-opt.sel { border-color: var(--gold); background: var(--gold-dim); color: var(--gold); }
     .toggle-icon { font-size: 26px; line-height: 1; }
     .toggle-label { font-size: 12px; font-weight: 700; letter-spacing: 0.5px; text-transform: uppercase; }
+
+
+    /* ══ MUNDUS ══ */
+    .mundus-body { width: 100%; max-width: 480px; padding: 20px 16px 40px; display: flex; flex-direction: column; gap: 20px; }
+    .mundus-date { font-size: 11px; font-weight: 600; letter-spacing: 2px; text-transform: uppercase; color: var(--muted); text-align: center; padding-top: 4px; }
+    .mundus-section { display: flex; flex-direction: column; gap: 8px; }
+    .mundus-sec-lbl { font-size: 10px; font-weight: 700; letter-spacing: 1.5px; text-transform: uppercase; color: var(--muted); }
+    .mundus-reminders { display: flex; flex-wrap: wrap; gap: 8px; }
+    .mundus-chip {
+      display: flex; align-items: center; gap: 6px;
+      padding: 8px 12px; border-radius: 20px;
+      border: 1px solid var(--border); background: var(--surface);
+      font-size: 12px; color: var(--text); cursor: pointer;
+      transition: all 0.15s;
+    }
+    .mundus-chip.done {
+      border-color: var(--green); background: rgba(42,138,74,0.10);
+      color: var(--green);
+    }
+    .mundus-chip .chip-check { font-size: 11px; }
+    .mundus-field {
+      width: 100%; padding: 10px 12px; border-radius: 10px;
+      border: 1px solid var(--border); background: var(--surface);
+      font-size: 13px; color: var(--text); resize: none;
+      font-family: inherit;
+    }
+    .mundus-field:focus { outline: none; border-color: var(--muted); }
+    .mundus-add-row { display: flex; gap: 8px; }
+    .mundus-add-input {
+      flex: 1; padding: 8px 12px; border-radius: 8px;
+      border: 1px solid var(--border); background: var(--surface);
+      font-size: 12px; color: var(--text); font-family: inherit;
+    }
+    .mundus-add-input:focus { outline: none; border-color: var(--muted); }
+    .mundus-add-btn {
+      padding: 8px 14px; border-radius: 8px;
+      border: 1px solid var(--border); background: transparent;
+      color: var(--muted); font-size: 12px; cursor: pointer;
+    }
+    .mundus-add-btn:active { color: var(--gold); border-color: var(--gold); }
+    .mundus-copy-btn {
+      padding: 13px; border-radius: 12px;
+      border: 1px solid var(--muted); background: transparent;
+      color: var(--muted); font-size: 12px; font-weight: 600;
+      letter-spacing: 1px; text-transform: uppercase; cursor: pointer;
+    }
+    .mundus-copy-btn:active { background: var(--muted); color: #fff; }
+    .mundus-conf { font-size: 11px; color: var(--green); text-align: center; min-height: 16px; letter-spacing: 0.5px; }
 
     /* ── TIDE / MOON BAR ── */
     .moon-display {
@@ -518,7 +574,10 @@
   <div class="tide-chip-row" id="tide-moon-bar">
     <span class="tm-chip"><span class="tm-em" id="tide-em">〜</span><span id="tide-lbl">—</span></span>
   </div>
-  <button class="p1-oracle" onclick="generateOraclePrompt()">Oracle</button>
+  <div class="p1-btn-row">
+    <button class="p1-oracle" onclick="generateOraclePrompt()">Oraculum</button>
+    <button class="p1-oracle p1-mundus" onclick="openMundus()">Mundus</button>
+  </div>
   <div class="oracle-toast" id="oracle-toast">Prompt copied — paste into Claude ✓</div>
 </div>
 
@@ -1918,6 +1977,182 @@ function showOracleToast() {
 
 // ─── INIT ───
 updateHistBtn();
+
+// ─── MUNDUS ───
+const MUNDUS_KEY = 'phq-mundus';
+const MUNDUS_REM_KEY = 'phq-mundus-reminders';
+
+const DEFAULT_REMINDERS = [
+  { id: 'gym',       label: 'Gym session',         freq: 'weekly',  days: [1,3,5] },
+  { id: 'eyedrops',  label: "Lester's eyedrops",   freq: 'daily' },
+  { id: 'leisure',   label: 'Leisure centre',       freq: 'weekly',  days: [2,5] },
+  { id: 'micaela',   label: 'Micaela check-in',     freq: 'monthly', date: 12 },
+];
+
+function mundusDateKey() {
+  const d = new Date();
+  return `${d.getFullYear()}-${d.getMonth()+1}-${d.getDate()}`;
+}
+
+function getMundusData() {
+  return JSON.parse(localStorage.getItem(MUNDUS_KEY) || '{}');
+}
+
+function getMundusReminders() {
+  const saved = JSON.parse(localStorage.getItem(MUNDUS_REM_KEY) || 'null');
+  return saved || DEFAULT_REMINDERS;
+}
+
+function mundusRemindersToday() {
+  const now = new Date();
+  const dow = now.getDay(); // 0=Sun
+  const dom = now.getDate();
+  return getMundusReminders().filter(r => {
+    if (r.freq === 'daily') return true;
+    if (r.freq === 'weekly') return r.days && r.days.includes(dow);
+    if (r.freq === 'monthly') return r.date === dom;
+    return true;
+  });
+}
+
+function openMundus() {
+  const now = new Date();
+  const DAYS = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+  const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  document.getElementById('mundus-date').textContent =
+    `${DAYS[now.getDay()]} ${now.getDate()} ${MONTHS[now.getMonth()]} ${now.getFullYear()}`;
+
+  const data = getMundusData();
+  const dk = mundusDateKey();
+  const done = data[dk] || {};
+
+  // Intention + log
+  document.getElementById('mundus-intention').value = done.intention || '';
+  document.getElementById('mundus-log').value = done.log || '';
+
+  buildMundusReminders();
+  document.getElementById('mundus-conf').textContent = '';
+  nav('p7');
+}
+
+function buildMundusReminders() {
+  const data = getMundusData();
+  const dk = mundusDateKey();
+  const done = (data[dk] || {}).done || {};
+  const today = mundusRemindersToday();
+  const wrap = document.getElementById('mundus-reminders');
+  wrap.innerHTML = '';
+  if (!today.length) {
+    wrap.innerHTML = '<span style="font-size:12px;color:var(--muted)">No recurring reminders today</span>';
+    return;
+  }
+  today.forEach(r => {
+    const chip = document.createElement('div');
+    chip.className = 'mundus-chip' + (done[r.id] ? ' done' : '');
+    chip.innerHTML = `<span class="chip-check">${done[r.id] ? '✓' : '○'}</span> ${r.label}`;
+    chip.onclick = () => mundusToggleDone(r.id);
+    wrap.appendChild(chip);
+  });
+}
+
+function mundusToggleDone(id) {
+  const data = getMundusData();
+  const dk = mundusDateKey();
+  if (!data[dk]) data[dk] = {};
+  if (!data[dk].done) data[dk].done = {};
+  data[dk].done[id] = !data[dk].done[id];
+  localStorage.setItem(MUNDUS_KEY, JSON.stringify(data));
+  buildMundusReminders();
+}
+
+function mundusSave() {
+  const data = getMundusData();
+  const dk = mundusDateKey();
+  if (!data[dk]) data[dk] = {};
+  data[dk].intention = document.getElementById('mundus-intention').value;
+  data[dk].log = document.getElementById('mundus-log').value;
+  localStorage.setItem(MUNDUS_KEY, JSON.stringify(data));
+}
+
+function mundusAddReminder() {
+  const inp = document.getElementById('mundus-new-reminder');
+  const label = inp.value.trim();
+  if (!label) return;
+  const reminders = getMundusReminders();
+  const id = 'custom_' + Date.now();
+  reminders.push({ id, label, freq: 'daily' });
+  localStorage.setItem(MUNDUS_REM_KEY, JSON.stringify(reminders));
+  inp.value = '';
+  buildMundusReminders();
+}
+
+function mundusCopy() {
+  const now = new Date();
+  const DAYS = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+  const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+  const data = getMundusData();
+  const dk = mundusDateKey();
+  const day = data[dk] || {};
+  const done = day.done || {};
+  const reminders = mundusRemindersToday();
+
+  const lines = [
+    'MUNDUS DAILY LOG',
+    `${DAYS[now.getDay()]} ${now.getDate()} ${MONTHS[now.getMonth()]} ${now.getFullYear()}`,
+    '',
+  ];
+  if (day.intention) lines.push(`Intention: ${day.intention}`, '');
+  const checkedOff = reminders.filter(r => done[r.id]).map(r => r.label);
+  const missed = reminders.filter(r => !done[r.id]).map(r => r.label);
+  if (checkedOff.length) lines.push(`Done: ${checkedOff.join(', ')}`);
+  if (missed.length) lines.push(`Pending: ${missed.join(', ')}`);
+  if (day.log) lines.push('', `Log: ${day.log}`);
+  lines.push('', '---', 'Mundus daily log. Ready for Claude.');
+
+  const txt = lines.join('\n');
+  if (navigator.clipboard) {
+    navigator.clipboard.writeText(txt).then(() => {
+      document.getElementById('mundus-conf').textContent = '✓ Copied — paste into Claude';
+      setTimeout(() => { document.getElementById('mundus-conf').textContent = ''; }, 3000);
+    });
+  }
+}
+
 </script>
+
+<!-- ══ P7: MUNDUS ══ -->
+<div id="p7" class="page">
+  <div class="top-bar">
+    <button class="back-btn" onclick="nav('p1')">← Back</button>
+    <div class="bar-title">Mundus</div>
+    <div style="width:60px"></div>
+  </div>
+  <div class="mundus-body">
+    <div class="mundus-date" id="mundus-date"></div>
+
+    <div class="mundus-section">
+      <div class="mundus-sec-lbl">Today's reminders</div>
+      <div class="mundus-reminders" id="mundus-reminders"></div>
+      <div class="mundus-add-row">
+        <input class="mundus-add-input" id="mundus-new-reminder" placeholder="Add reminder…" />
+        <button class="mundus-add-btn" onclick="mundusAddReminder()">+ Add</button>
+      </div>
+    </div>
+
+    <div class="mundus-section">
+      <div class="mundus-sec-lbl">Intention</div>
+      <textarea class="mundus-field" id="mundus-intention" rows="2" placeholder="Today I intend to…" oninput="mundusSave()"></textarea>
+    </div>
+
+    <div class="mundus-section">
+      <div class="mundus-sec-lbl">Log</div>
+      <textarea class="mundus-field" id="mundus-log" rows="4" placeholder="Appointments, notes, open loops…" oninput="mundusSave()"></textarea>
+    </div>
+
+    <button class="mundus-copy-btn" onclick="mundusCopy()">Copy to Claude</button>
+    <div class="mundus-conf" id="mundus-conf"></div>
+  </div>
+</div>
+
 </body>
 </html>
