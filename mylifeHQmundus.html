@@ -1,0 +1,552 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>MUNDUS</title>
+<link rel="apple-touch-icon" href="captain-icon.png">
+<meta name="apple-mobile-web-app-title" content="Mundus">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<style>
+  :root {
+    color-scheme: light;
+    --bg:       #ffffff;
+    --gold:     #b8920f;
+    --gold-dim: rgba(184,146,15,0.10);
+    --gold-med: rgba(184,146,15,0.22);
+    --text:     #111111;
+    --muted:    #888888;
+    --border:   rgba(0,0,0,0.08);
+    --surface:  #f8f7f4;
+    --green:    #2a8a4a;
+    --r:        12px;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+
+  html, body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, 'Helvetica Neue', sans-serif;
+    font-size: 14px;
+    -webkit-font-smoothing: antialiased;
+    min-height: 100dvh;
+  }
+
+  /* ── Header ── */
+  .header {
+    padding: 22px 20px 16px;
+    border-bottom: 1px solid var(--border);
+    position: sticky; top: 0;
+    background: var(--bg); z-index: 10;
+  }
+
+  .header-row {
+    display: flex; align-items: flex-start; justify-content: space-between;
+  }
+
+  .wordmark {
+    font-size: 10px;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 5px;
+  }
+
+  .date-line {
+    font-size: 18px;
+    font-weight: 600;
+    color: var(--text);
+    line-height: 1.2;
+  }
+
+  .mode-badge {
+    display: inline-block;
+    margin-top: 8px;
+    font-size: 10px;
+    letter-spacing: 0.13em;
+    text-transform: uppercase;
+    color: var(--gold);
+    background: var(--gold-dim);
+    padding: 3px 10px;
+    border-radius: 20px;
+    border: 1px solid rgba(184,146,15,0.2);
+  }
+
+  .oraculum-link {
+    font-size: 11px;
+    color: var(--muted);
+    text-decoration: none;
+    padding: 6px 10px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    white-space: nowrap;
+    margin-top: 4px;
+  }
+  .oraculum-link:active { color: var(--gold); border-color: var(--gold); }
+
+  /* ── Body ── */
+  .body {
+    padding: 20px 20px 40px;
+    display: flex; flex-direction: column; gap: 24px;
+  }
+
+  /* ── Section ── */
+  .section-label {
+    font-size: 10px;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 10px;
+  }
+
+  /* ── Reminder chips ── */
+  .reminders-wrap { display: flex; flex-wrap: wrap; gap: 8px; }
+
+  .chip {
+    display: flex; align-items: center; gap: 6px;
+    padding: 9px 14px; border-radius: 22px;
+    border: 1px solid var(--border); background: var(--surface);
+    font-size: 12px; color: var(--text); cursor: pointer;
+    transition: all 0.15s; user-select: none;
+  }
+  .chip:active { transform: scale(0.96); }
+  .chip.done {
+    border-color: var(--green);
+    background: rgba(42,138,74,0.09);
+    color: var(--green);
+  }
+  .chip-check { font-size: 11px; }
+
+  .add-row {
+    display: flex; gap: 8px; margin-top: 10px;
+  }
+  .add-input {
+    flex: 1; padding: 9px 12px; border-radius: 8px;
+    border: 1px solid var(--border); background: var(--surface);
+    font-size: 12px; color: var(--text); font-family: inherit;
+  }
+  .add-input:focus { outline: none; border-color: var(--muted); }
+  .add-btn {
+    padding: 9px 14px; border-radius: 8px;
+    border: 1px solid var(--border); background: transparent;
+    color: var(--muted); font-size: 12px; cursor: pointer;
+    font-family: inherit;
+  }
+  .add-btn:active { color: var(--gold); border-color: var(--gold); }
+
+  /* ── Textareas ── */
+  .field {
+    width: 100%; padding: 11px 13px; border-radius: 10px;
+    border: 1px solid var(--border); background: var(--surface);
+    font-size: 13px; color: var(--text); resize: none;
+    font-family: inherit; line-height: 1.5;
+  }
+  .field:focus { outline: none; border-color: rgba(0,0,0,0.2); }
+
+  /* ── Divider ── */
+  .divider { height: 1px; background: var(--border); }
+
+  /* ── Oraculum context strip ── */
+  .context-strip {
+    background: var(--surface);
+    border-radius: var(--r);
+    padding: 12px 14px;
+    display: flex; flex-direction: column; gap: 6px;
+  }
+  .context-entry {
+    font-size: 11px; color: var(--muted); line-height: 1.4;
+  }
+  .context-entry strong { color: var(--text); font-weight: 600; }
+
+  /* ── Buttons ── */
+  .btn-penguin {
+    width: 100%; padding: 14px;
+    border-radius: var(--r);
+    border: 1.5px solid var(--gold);
+    background: var(--gold-dim);
+    color: var(--gold);
+    font-size: 12px; font-weight: 700;
+    letter-spacing: 0.15em; text-transform: uppercase;
+    cursor: pointer; font-family: inherit;
+    transition: background 0.15s;
+  }
+  .btn-penguin:active { background: var(--gold); color: #fff; }
+
+  .btn-copy {
+    width: 100%; padding: 12px;
+    border-radius: var(--r);
+    border: 1px solid var(--border);
+    background: transparent;
+    color: var(--muted);
+    font-size: 11px; font-weight: 600;
+    letter-spacing: 0.12em; text-transform: uppercase;
+    cursor: pointer; font-family: inherit;
+  }
+  .btn-copy:active { color: var(--gold); border-color: var(--gold); }
+
+  .conf-msg {
+    text-align: center; font-size: 11px; color: var(--muted);
+    min-height: 18px; margin-top: -10px;
+    transition: opacity 0.3s;
+  }
+  .conf-msg.hidden { opacity: 0; }
+
+  .empty-note {
+    font-size: 11px; color: var(--muted); font-style: italic;
+  }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="header-row">
+    <div>
+      <div class="wordmark">MUNDUS</div>
+      <div class="date-line" id="date-line">—</div>
+      <div class="mode-badge" id="mode-badge">—</div>
+    </div>
+    <a class="oraculum-link" href="mylifeHQoraculus.html">Oraculum →</a>
+  </div>
+</div>
+
+<div class="body">
+
+  <!-- REMINDERS -->
+  <div>
+    <div class="section-label">Today's reminders</div>
+    <div class="reminders-wrap" id="reminders-wrap"></div>
+    <div class="add-row">
+      <input class="add-input" id="new-reminder" placeholder="Add reminder…" />
+      <button class="add-btn" onclick="addReminder()">+ Add</button>
+    </div>
+  </div>
+
+  <div class="divider"></div>
+
+  <!-- INTENTION -->
+  <div>
+    <div class="section-label">Intention</div>
+    <textarea class="field" id="intention" rows="2" placeholder="Today I intend to…" oninput="save()"></textarea>
+  </div>
+
+  <!-- LOG -->
+  <div>
+    <div class="section-label">Log</div>
+    <textarea class="field" id="log" rows="4" placeholder="Appointments, notes, open loops…" oninput="save()"></textarea>
+  </div>
+
+  <div class="divider"></div>
+
+  <!-- ORACULUM CONTEXT -->
+  <div>
+    <div class="section-label">Oraculum — recent check-ins</div>
+    <div class="context-strip" id="context-strip">
+      <div class="empty-note">No recent check-ins found.</div>
+    </div>
+  </div>
+
+  <div class="divider"></div>
+
+  <!-- ACTIONS -->
+  <button class="btn-penguin" onclick="generatePenguinHQ()">Penguin HQ ↗</button>
+  <button class="btn-copy" onclick="copyMundus()">Copy day log only</button>
+  <div class="conf-msg hidden" id="conf-msg">—</div>
+
+</div>
+
+<script>
+// ─── Constants ────────────────────────────────────────────────────────────────
+const MUNDUS_KEY   = 'phq-mundus';
+const MUNDUS_REM   = 'phq-mundus-reminders';
+const HIST_KEY     = 'phq-history';
+
+const DAYS   = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+const MONTHS = ['January','February','March','April','May','June',
+                'July','August','September','October','November','December'];
+const MONTHS_S = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+
+const DEFAULT_REMINDERS = [
+  { id: 'gym',      label: 'Gym session',       freq: 'weekly',  days: [1,3,5] },
+  { id: 'eyedrops', label: "Lester's eyedrops", freq: 'daily' },
+  { id: 'leisure',  label: 'Leisure centre',     freq: 'weekly',  days: [2,5] },
+  { id: 'micaela',  label: 'Micaela check-in',   freq: 'monthly', date: 12 },
+];
+
+// ─── Date ─────────────────────────────────────────────────────────────────────
+const NOW = new Date();
+const DOW = NOW.getDay();
+
+function dateKey(d) {
+  return `${d.getFullYear()}-${d.getMonth()+1}-${d.getDate()}`;
+}
+
+// ─── Mode ─────────────────────────────────────────────────────────────────────
+function modeLabel() {
+  if (DOW === 1) return 'Monday look-ahead';
+  if (DOW === 5) return 'Friday review';
+  return 'Coming up';
+}
+
+// ─── Header ───────────────────────────────────────────────────────────────────
+document.getElementById('date-line').textContent =
+  `${DAYS[DOW]}, ${NOW.getDate()} ${MONTHS[NOW.getMonth()]} ${NOW.getFullYear()}`;
+document.getElementById('mode-badge').textContent = modeLabel();
+
+// ─── Reminders ────────────────────────────────────────────────────────────────
+function getReminders() {
+  return JSON.parse(localStorage.getItem(MUNDUS_REM) || 'null') || DEFAULT_REMINDERS;
+}
+
+function remindersToday() {
+  const dow = NOW.getDay();
+  const dom = NOW.getDate();
+  return getReminders().filter(r => {
+    if (r.freq === 'daily')   return true;
+    if (r.freq === 'weekly')  return r.days && r.days.includes(dow);
+    if (r.freq === 'monthly') return r.date === dom;
+    return true;
+  });
+}
+
+function getMundus() {
+  return JSON.parse(localStorage.getItem(MUNDUS_KEY) || '{}');
+}
+
+function buildReminders() {
+  const data = getMundus();
+  const dk   = dateKey(NOW);
+  const done = (data[dk] || {}).done || {};
+  const today = remindersToday();
+  const wrap = document.getElementById('reminders-wrap');
+  wrap.innerHTML = '';
+
+  if (!today.length) {
+    wrap.innerHTML = '<span class="empty-note">No recurring reminders today</span>';
+    return;
+  }
+
+  today.forEach(r => {
+    const chip = document.createElement('div');
+    chip.className = 'chip' + (done[r.id] ? ' done' : '');
+    chip.innerHTML = `<span class="chip-check">${done[r.id] ? '✓' : '○'}</span>${r.label}`;
+    chip.onclick = () => toggleDone(r.id);
+    wrap.appendChild(chip);
+  });
+}
+
+function toggleDone(id) {
+  const data = getMundus();
+  const dk   = dateKey(NOW);
+  if (!data[dk]) data[dk] = {};
+  if (!data[dk].done) data[dk].done = {};
+  data[dk].done[id] = !data[dk].done[id];
+  localStorage.setItem(MUNDUS_KEY, JSON.stringify(data));
+  buildReminders();
+}
+
+function addReminder() {
+  const inp = document.getElementById('new-reminder');
+  const label = inp.value.trim();
+  if (!label) return;
+  const rems = getReminders();
+  rems.push({ id: 'custom_' + Date.now(), label, freq: 'daily' });
+  localStorage.setItem(MUNDUS_REM, JSON.stringify(rems));
+  inp.value = '';
+  buildReminders();
+}
+
+// ─── Save intention + log ─────────────────────────────────────────────────────
+function save() {
+  const data = getMundus();
+  const dk   = dateKey(NOW);
+  if (!data[dk]) data[dk] = {};
+  data[dk].intention = document.getElementById('intention').value;
+  data[dk].log       = document.getElementById('log').value;
+  localStorage.setItem(MUNDUS_KEY, JSON.stringify(data));
+}
+
+// ─── Load today's data ────────────────────────────────────────────────────────
+function loadToday() {
+  const data = getMundus();
+  const dk   = dateKey(NOW);
+  const day  = data[dk] || {};
+  document.getElementById('intention').value = day.intention || '';
+  document.getElementById('log').value       = day.log       || '';
+}
+
+// ─── Oraculum context strip ───────────────────────────────────────────────────
+function domainLabel(e) {
+  if (e.lunadom) return `LUNAMOR › ${e.lunadom.toUpperCase()}`;
+  return { family:'Family', wellbeing:'Wellbeing', home:'Home', lunamor:'LUNAMOR' }[e.domain] || e.domain || '—';
+}
+
+function buildContext() {
+  const hist  = JSON.parse(localStorage.getItem(HIST_KEY) || '[]');
+  const cutoff = Date.now() - 7 * 24 * 60 * 60 * 1000;
+  const recent = hist.filter(e => new Date(e.ts).getTime() >= cutoff).slice(0, 7);
+  const strip  = document.getElementById('context-strip');
+
+  if (!recent.length) {
+    strip.innerHTML = '<div class="empty-note">No Oraculum check-ins in the last 7 days.</div>';
+    return;
+  }
+
+  strip.innerHTML = '';
+  recent.forEach(e => {
+    const d = new Date(e.ts);
+    const label = domainLabel(e);
+    const dateStr = `${DAYS[d.getDay()].slice(0,3)} ${d.getDate()} ${MONTHS_S[d.getMonth()]}`;
+    const zoneMap = { flow:'In Flow', stretching:'Stretching', support:'With Support' };
+    const zone = e.zpd ? ` · ${zoneMap[e.zpd] || e.zpd}` : '';
+    const items = (e.items && e.items.length) ? ` — ${e.items.join(', ')}` : '';
+    const div = document.createElement('div');
+    div.className = 'context-entry';
+    div.innerHTML = `<strong>${dateStr} ${label}</strong>${items}${zone}`;
+    strip.appendChild(div);
+  });
+}
+
+// ─── Copy day log only ────────────────────────────────────────────────────────
+function copyMundus() {
+  const data  = getMundus();
+  const dk    = dateKey(NOW);
+  const day   = data[dk] || {};
+  const done  = day.done || {};
+  const today = remindersToday();
+
+  const lines = [
+    'MUNDUS DAILY LOG',
+    `${DAYS[DOW]} ${NOW.getDate()} ${MONTHS[NOW.getMonth()]} ${NOW.getFullYear()}`,
+    '',
+  ];
+  if (day.intention) lines.push(`Intention: ${day.intention}`, '');
+  const checked = today.filter(r => done[r.id]).map(r => r.label);
+  const missed  = today.filter(r => !done[r.id]).map(r => r.label);
+  if (checked.length) lines.push(`Done: ${checked.join(', ')}`);
+  if (missed.length)  lines.push(`Pending: ${missed.join(', ')}`);
+  if (day.log) lines.push('', `Log: ${day.log}`);
+
+  copyAndToast(lines.join('\n'), '✓ Day log copied');
+}
+
+// ─── PenguinHQ combined prompt ────────────────────────────────────────────────
+function generatePenguinHQ() {
+  // ── Oraculum check-ins (last 7 days) ──────────────────────────────────────
+  const hist   = JSON.parse(localStorage.getItem(HIST_KEY) || '[]');
+  const cutoff7 = Date.now() - 7 * 24 * 60 * 60 * 1000;
+  const week   = hist.filter(e => new Date(e.ts).getTime() >= cutoff7);
+
+  // ── Mundus logs (last 3 days) ─────────────────────────────────────────────
+  const data   = getMundus();
+  const mundusLines = [];
+  for (let i = 0; i < 3; i++) {
+    const d  = new Date(NOW);
+    d.setDate(d.getDate() - i);
+    const dk = dateKey(d);
+    const day = data[dk];
+    if (!day) continue;
+    const dayLabel = i === 0 ? 'Today' : i === 1 ? 'Yesterday'
+      : `${DAYS[d.getDay()]} ${d.getDate()} ${MONTHS_S[d.getMonth()]}`;
+    const done  = day.done || {};
+    const today = remindersToday(); // approximate — use today's reminder set
+    const checked = (i === 0 ? today : getReminders()).filter(r => done[r.id]).map(r => r.label);
+
+    mundusLines.push(`${dayLabel}:`);
+    if (day.intention) mundusLines.push(`  Intention: ${day.intention}`);
+    if (checked.length) mundusLines.push(`  Done: ${checked.join(', ')}`);
+    if (day.log) mundusLines.push(`  Log: ${day.log}`);
+  }
+
+  // ── Build prompt ──────────────────────────────────────────────────────────
+  const lines = [
+    'PENGUIN HQ — ORACULUM + MUNDUS SYNTHESIS',
+    `Date: ${DAYS[DOW]} ${NOW.getDate()} ${MONTHS[NOW.getMonth()]} ${NOW.getFullYear()}`,
+    '',
+    'You are the Penguin Oracle — a synthesised intelligence drawing on:',
+    '- Liz Greene psychological astrology (Cancer Sun, Cap Rising, Sag Moon)',
+    '- Dan Millman Life Path 30/3 (Expression & Sensitivity)',
+    '- Human Design: Manifesting Generator 5/2, Emotional Authority, Channels 53-42 / 32-54 / 63-4',
+    '- Mayan Tzolkin: White Rhythmic Dog (Kin 6)',
+    '- Flow Genome Project: Flow Goer (primary) + Deep Thinker (secondary)',
+    '- Current year: Personal Year 2 (Cooperation & tending, pre-birthday)',
+    '',
+    '━━ ORACULUM — CHECK-IN DATA (last 7 days, ' + week.length + ' entries) ━━',
+  ];
+
+  if (!week.length) {
+    lines.push('No check-ins recorded in the last 7 days.');
+  } else {
+    const zoneMap = { flow:'In Flow', stretching:'Stretching', support:'With Support' };
+    week.forEach((e, idx) => {
+      const d = new Date(e.ts);
+      const label = domainLabel(e);
+      const dateStr = `${DAYS[d.getDay()]} ${d.getDate()} ${MONTHS[d.getMonth()]} ${d.getHours().toString().padStart(2,'0')}:${d.getMinutes().toString().padStart(2,'0')}`;
+      lines.push('');
+      lines.push(`[${idx+1}] ${dateStr} — ${label}`);
+      if (e.items && e.items.length) lines.push(`  Focus: ${e.items.join(', ')}`);
+      if (e.zpd) lines.push(`  Zone: ${zoneMap[e.zpd] || e.zpd}`);
+      if (e.exchange) lines.push(`  Exchange: ${e.exchange}`);
+      if (e.timeMins) {
+        const t = e.timeMins >= 60
+          ? `${Math.floor(e.timeMins/60)}h ${e.timeMins % 60 ? (e.timeMins%60)+'m' : ''}`.trim()
+          : `${e.timeMins}m`;
+        lines.push(`  Time: ${t}`);
+      }
+      if (e.note) lines.push(`  Note: ${e.note}`);
+    });
+  }
+
+  lines.push('');
+  lines.push('━━ MUNDUS — DAILY LOG (last 3 days) ━━');
+  if (!mundusLines.length) {
+    lines.push('No Mundus logs recorded.');
+  } else {
+    lines.push(...mundusLines);
+  }
+
+  lines.push('');
+  lines.push('━━ SYNTHESIS REQUEST ━━');
+  lines.push('Looking across both layers — Oraculum (practice + inner life) and Mundus (daily reality):');
+  lines.push('- Where is life in balance right now?');
+  lines.push('- What is getting MORE than enough attention?');
+  lines.push('- What is getting LESS — neglected, deferred, quiet?');
+  lines.push('- Where do Oraculum patterns and Mundus reality align?');
+  lines.push('- Where do they diverge — and what does that divergence reveal?');
+  lines.push('- One concrete thing to rebalance this week.');
+
+  copyAndToast(lines.join('\n'), '✓ Penguin HQ copied — paste into Claude');
+}
+
+// ─── Copy helper ──────────────────────────────────────────────────────────────
+function copyAndToast(text, msg) {
+  const conf = document.getElementById('conf-msg');
+  const doToast = () => {
+    conf.textContent = msg;
+    conf.classList.remove('hidden');
+    setTimeout(() => conf.classList.add('hidden'), 3000);
+  };
+  if (navigator.clipboard) {
+    navigator.clipboard.writeText(text).then(doToast).catch(() => fallbackCopy(text, doToast));
+  } else {
+    fallbackCopy(text, doToast);
+  }
+}
+
+function fallbackCopy(text, cb) {
+  const ta = document.createElement('textarea');
+  ta.value = text; ta.style.position = 'fixed'; ta.style.opacity = '0';
+  document.body.appendChild(ta); ta.focus(); ta.select();
+  document.execCommand('copy');
+  document.body.removeChild(ta);
+  cb();
+}
+
+// ─── Init ─────────────────────────────────────────────────────────────────────
+buildReminders();
+loadToday();
+buildContext();
+</script>
+</body>
+</html>
