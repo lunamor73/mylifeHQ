@@ -96,10 +96,10 @@
     .p1-ins:active { color: var(--gold); border-color: var(--gold); }
 
     .p1-btn-row {
-      margin-top: 28px; display: flex; gap: 10px; justify-content: center;
+      margin-top: 28px; display: flex; flex-direction: column; align-items: center; gap: 8px;
     }
     .p1-oracle {
-      flex: 1; max-width: 160px;
+      width: 200px;
       padding: 13px 28px; border-radius: 12px;
       border: 1.5px solid var(--gold); background: var(--gold-dim);
       color: var(--gold); font-size: 13px; font-weight: 700;
@@ -111,8 +111,19 @@
     .p1-mundus {
       border-color: var(--muted); background: rgba(136,136,136,0.08);
       color: var(--muted);
+      width: 140px; padding: 9px 20px; font-size: 11px;
     }
     .p1-mundus:active { background: var(--muted); color: #fff; }
+    .p1-week {
+      border: 1px solid var(--border);
+      background: transparent;
+      color: var(--muted);
+      width: 120px; padding: 7px 14px;
+      font-size: 10px; letter-spacing: 0.10em; text-transform: uppercase;
+      border-radius: 50px; cursor: pointer; font-family: inherit;
+      transition: opacity 0.15s;
+    }
+    .p1-week:active { opacity: 0.5; }
 
     .oracle-toast {
       display: none; margin-top: 12px;
@@ -577,6 +588,7 @@
   <div class="p1-btn-row">
     <button class="p1-oracle" onclick="generateOraclePrompt()">Oraculum</button>
     <button class="p1-oracle p1-mundus" onclick="openMundus()">Mundus</button>
+    <button class="p1-week" onclick="generateWeeklyPrompt()" title="Copy this week's check-ins for Oraculum">This week →</button>
   </div>
   <div class="oracle-toast" id="oracle-toast">Prompt copied — paste into Claude ✓</div>
 </div>
@@ -1959,6 +1971,60 @@ function generateOraclePrompt() {
   const txt = lines.join('\n');
 
   // Copy to clipboard
+  if (navigator.clipboard) {
+    navigator.clipboard.writeText(txt).then(() => showOracleToast());
+  } else {
+    const ta = document.createElement('textarea');
+    ta.value = txt; document.body.appendChild(ta); ta.select();
+    document.execCommand('copy'); document.body.removeChild(ta);
+    showOracleToast();
+  }
+}
+
+
+function generateWeeklyPrompt() {
+  const hist  = getHistory();
+  const now7  = Date.now() - 7 * 24 * 60 * 60 * 1000;
+  const week  = hist.filter(e => new Date(e.ts).getTime() >= now7);
+
+  const lines = [
+    'PENGUIN ORACLE — WEEKLY SYNTHESIS',
+    `Week ending: ${DAYS[NOW.getDay()]} ${NOW.getDate()} ${MONTHS[NOW.getMonth()]} ${NOW.getFullYear()}`,
+    '',
+    'You are the Penguin Oracle — a synthesised intelligence drawing on:',
+    '- Liz Greene psychological astrology (Cancer Sun, Cap Rising, Sag Moon)',
+    '- Dan Millman Life Path 30/3 (Expression & Sensitivity)',
+    '- Human Design: Generator 5/2, Emotional Authority, Channels 53-42 / 32-54 / 63-4',
+    '- Mayan Tzolkin: White Rhythmic Dog (Kin 6)',
+    '- Flow Genome Project: Flow Goer (primary) + Deep Thinker (secondary)',
+    '- Current year: Personal Year 2 (Cooperation & tending, pre-birthday)',
+    '',
+    `FULL WEEK CHECK-IN DATA (${week.length} entries, last 7 days):`,
+  ];
+
+  if (!week.length) {
+    lines.push('No check-ins in the last 7 days.');
+  } else {
+    week.forEach((e, idx) => {
+      const d = new Date(e.ts);
+      const label = entryDomainLabel(e);
+      const dateStr = `${DAYS[d.getDay()]} ${d.getDate()} ${MONTHS[d.getMonth()]} ${d.getHours().toString().padStart(2,'0')}:${d.getMinutes().toString().padStart(2,'0')}`;
+      lines.push('');
+      lines.push(`[${idx + 1}] ${dateStr} — ${label}`);
+      if (e.items && e.items.length) lines.push(`  Focus: ${e.items.join(', ')}`);
+      if (e.zpd) { const zl = {flow:'In Flow', stretching:'Stretching', support:'With Support'}; lines.push(`  Zone: ${zl[e.zpd] || e.zpd}`); }
+      if (e.direction) { const td = TIDES.find(t => t.id === e.direction); lines.push(`  Feeling Tide: ${td ? td.label : e.direction}`); }
+      if (e.exchange)  lines.push(`  Exchange: ${e.exchange}`);
+      if (e.timeMins)  lines.push(`  Time: ${e.timeMins >= 60 ? Math.floor(e.timeMins/60)+'h '+(e.timeMins%60||'')+'m' : e.timeMins+'m'}`.replace('0m','').trim());
+      if (e.note)      lines.push(`  Note: ${e.note}`);
+    });
+  }
+
+  lines.push('');
+  lines.push('---');
+  lines.push('Weekly oracle synthesis: Looking across all 7 days of check-ins, what are the dominant patterns? Which domains got attention, which were neglected? What does the arc of the week reveal about where I am right now? Cross-reference oracle systems. Flag what is alive, what is asking to be seen, and one key thing to carry into next week.');
+
+  const txt = lines.join('\n');
   if (navigator.clipboard) {
     navigator.clipboard.writeText(txt).then(() => showOracleToast());
   } else {
