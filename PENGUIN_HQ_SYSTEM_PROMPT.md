@@ -99,7 +99,7 @@ Three vivid flow memories revealing deepest pre-identity pathways:
 
 ### Numerology Cycle
 
-**Personal Year 1 — Creativity & Security (seeds, new beginnings, initiation).** Pre-birthday transitional phase (birthday 12 Jul 2026); Year 2 (Cooperation & tending) activates post-birthday. Currently in the liminal threshold: still holding Year 1 independence and solo initiation energy, stepping toward Year 2 interdependence and partnership. Not a launch year — a root year. This transition is sacred: where individual becomes collaborative.
+**Personal Year 1 (seeds, new beginnings, initiation — self re-emerges).** Pre-birthday phase; birthday 12 Jul 2026. Post-birthday transitions to **Master Year 11** (Illumination · intuition · higher purpose — master number, not reduced to 2). High-voltage: heightened intuition, increased sensitivity, pressure to step into larger purpose. Not a launch year — a root year becoming a revelation year.
 
 ---
 
