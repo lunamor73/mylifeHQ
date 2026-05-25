@@ -1927,6 +1927,38 @@ async function initTideMoon() {
   });
 }
 
+// ─── PERSONAL YEAR (birthday-aligned numerology) ───
+function calcPersonalYear(date) {
+  const bMonth = 7, bDay = 12;
+  const m = date.getMonth() + 1, d = date.getDate(), y = date.getFullYear();
+  const yearForCalc = (m > bMonth || (m === bMonth && d >= bDay)) ? y : y - 1;
+  const sum = bMonth + bDay + [...String(yearForCalc)].reduce((a, c) => a + parseInt(c), 0);
+  let n = sum;
+  while (n > 9 && n !== 11 && n !== 22) n = [...String(n)].reduce((a, c) => a + parseInt(c), 0);
+  return n;
+}
+function personalYearLabel(date) {
+  const py = calcPersonalYear(date);
+  const bMonth = 7, bDay = 12;
+  const m = date.getMonth() + 1, d = date.getDate();
+  const post = (m > bMonth || (m === bMonth && d >= bDay));
+  const themes = {
+    1:'New beginnings · seeds · self re-emerges',
+    2:'Cooperation · tending · receiving · root year',
+    3:'Expression · creativity · voice',
+    4:'Structure · foundations · long build',
+    5:'Change · freedom · movement',
+    6:'Responsibility · family · service',
+    7:'Reflection · study · inner work',
+    8:'Authority · power · material world',
+    9:'Completion · release · endings as gifts',
+    11:'Master Year 11 — Illumination · intuition · higher purpose',
+    22:'Master Year 22 — Master Builder · vision made material'
+  };
+  const status = post ? 'active from 12 Jul' : 'pre-birthday — shifts 12 Jul';
+  return `Personal Year ${py} (${themes[py] || ''}) [${status}]`;
+}
+
 // ─── ORACLE INSIGHT PROMPT ───
 function generateOraclePrompt() {
   const hist = getHistory();
@@ -1942,8 +1974,8 @@ function generateOraclePrompt() {
     '- Human Design: Manifesting Generator 5/2, Emotional Authority, Channels 53-42 / 32-54 / 63-4',
     '- Mayan Tzolkin: White Rhythmic Dog (Kin 6)',
     '- Flow Genome Project: Flow Goer (primary) + Deep Thinker (secondary); full library available (flow triggers, hedonic calendaring, FSDR, Recapture the Rapture, Stealing Fire)',
-    '- Wellbeing source texts: Campbell (Hero\'s Journey / Power of Myth), Jung (soul psychology / individuation), Moore (Care of the Soul), Jodorowsky (Psychomagic), Patanjali (Yoga-sutra), Breathology/Severinsen (freediving breathwork)',
-    '- Current year: Personal Year 2 (Cooperation & tending, pre-birthday)',
+    '- Wellbeing source texts: Campbell (Hero\'s Journey / Power of Myth), Jung (soul psychology / individuation), Moore (Care of the Soul), Jodorowsky (Psychomagic), Patanjali (Yoga-sutra), Breathology/Severinsen (freediving breathwork), Vā Moana/Refiti et al. (Pacific vā — sacred relational space; foundation of LUNAVĀ)',
+    `- Current year: ${personalYearLabel(NOW)}`,
     '',
     'RECENT CHECK-IN DATA:',
   ];
@@ -2002,8 +2034,8 @@ function generateWeeklyPrompt() {
     '- Human Design: Manifesting Generator 5/2, Emotional Authority, Channels 53-42 / 32-54 / 63-4',
     '- Mayan Tzolkin: White Rhythmic Dog (Kin 6)',
     '- Flow Genome Project: Flow Goer (primary) + Deep Thinker (secondary); full library available (flow triggers, hedonic calendaring, FSDR, Recapture the Rapture, Stealing Fire)',
-    '- Wellbeing source texts: Campbell (Hero\'s Journey / Power of Myth), Jung (soul psychology / individuation), Moore (Care of the Soul), Jodorowsky (Psychomagic), Patanjali (Yoga-sutra), Breathology/Severinsen (freediving breathwork)',
-    '- Current year: Personal Year 2 (Cooperation & tending, pre-birthday)',
+    '- Wellbeing source texts: Campbell (Hero\'s Journey / Power of Myth), Jung (soul psychology / individuation), Moore (Care of the Soul), Jodorowsky (Psychomagic), Patanjali (Yoga-sutra), Breathology/Severinsen (freediving breathwork), Vā Moana/Refiti et al. (Pacific vā — sacred relational space; foundation of LUNAVĀ)',
+    `- Current year: ${personalYearLabel(NOW)}`,
     '',
     `FULL WEEK CHECK-IN DATA (${week.length} entries, last 7 days):`,
   ];
@@ -2088,8 +2120,8 @@ function generatePenguinHQPrompt() {
     '- Human Design: Manifesting Generator 5/2, Emotional Authority, Channels 53-42 / 32-54 / 63-4',
     '- Mayan Tzolkin: White Rhythmic Dog (Kin 6)',
     '- Flow Genome Project: Flow Goer (primary) + Deep Thinker (secondary); full library available (flow triggers, hedonic calendaring, FSDR, Recapture the Rapture, Stealing Fire)',
-    '- Wellbeing source texts: Campbell (Hero\'s Journey / Power of Myth), Jung (soul psychology / individuation), Moore (Care of the Soul), Jodorowsky (Psychomagic), Patanjali (Yoga-sutra), Breathology/Severinsen (freediving breathwork)',
-    '- Current year: Personal Year 2 (Cooperation & tending, pre-birthday)',
+    '- Wellbeing source texts: Campbell (Hero\'s Journey / Power of Myth), Jung (soul psychology / individuation), Moore (Care of the Soul), Jodorowsky (Psychomagic), Patanjali (Yoga-sutra), Breathology/Severinsen (freediving breathwork), Vā Moana/Refiti et al. (Pacific vā — sacred relational space; foundation of LUNAVĀ)',
+    `- Current year: ${personalYearLabel(NOW)}`,
     '',
     `\u2501\u2501 ORACULUM \u2014 CHECK-IN DATA (last 7 days, ${week.length} entries) \u2501\u2501`,
   ];
