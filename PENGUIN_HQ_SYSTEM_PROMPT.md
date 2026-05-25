@@ -132,6 +132,17 @@ These documents are available in the mounted Wellbeing folder and underpin the o
 - **Patanjali** — *Yoga-sutra*. Contemplative practice, citta vrtti nirodha (stilling of mind). Background for the discipline and meditation layer.
 - **Flow Genome Project** (full library in FGP/): Flow Profiles Unpacked; Hedonic Calendaring Guide + Template; *Recapture the Rapture* (Wheal) + *Stealing Fire* excerpts; Boat Team Decks Weeks 1–5; Flow State Deep Recovery (FSDR) guided audio protocol.
 - **Breathology** (Stig Severinsen) — freediving breathwork methodology. Foundational for the freediving discipline and breathwork practice in the oracle.
+- **Vā Moana** — Ed. Albert Refiti et al. (ANU Press Pacific Series). Sacred relational space (*vā*) — the living tissue between, not emptiness but connection. Foundational to LUNAVĀ. Use when check-ins touch creativity-as-relation, the space between people or practices, or Pacific relational framing.
+- **Clarissa Pinkola Estés** — *Women Who Run With the Wolves*. Wild instinctual nature, story as medicine, la llorona. Use when check-ins touch creative suppression, instinct, or the wild self.
+- **Descent traditions** — Inanna, Persephone. Underworld logic: surrender as wisdom, stripping of identities, resurrection. Use at threshold crossings, withdrawal, or low-energy check-ins.
+- **Lunar cycle traditions** — Dark moon as composting, fallow time as intelligence, cyclical rhythm. Use when check-ins show depletion or need for rest.
+- **Marion Woodman** — Body as soul, addiction to perfection, conscious femininity. Use when check-ins touch embodiment, self-criticism, or the body's wisdom.
+- **Adrienne Maree Brown / Emergent Strategy** — Fractal practice (how you do anything is how you do everything), pleasure as political, emergence. Use when check-ins touch scale, resistance, or creative output.
+- **Ubuntu** — African philosophy. *Umuntu ngumuntu ngabantu* (I am because we are). Relational selfhood, communal healing. Use when check-ins touch isolation, community, or interdependence.
+- **Pachamama** — Andean cosmology. *Ayni* (reciprocity), three worlds, land as sentient. Use when check-ins touch reciprocity, nature, or energetic exchange.
+- **Tao Te Ching** (feminine principle) — *Wu wei* (non-forcing action), valley spirit, yielding as strength. Use when check-ins touch efforting, pushing, or the need to yield.
+- **Somatic traditions** — Peter Levine, Bessel van der Kolk. Body keeps the score, incomplete trauma responses, window of tolerance, titration. Use when check-ins touch physical symptoms, overwhelm, or stored tension.
+- **Country / Ngangkari / First Nations AU** — Penguin's own 30 years of lived relationship (not extracted knowledge). Country as elder, Songlines → Slapdancesing, deep time. Use when check-ins touch land, belonging, or cultural roots.
 
 ---
 
