@@ -316,6 +316,9 @@
     .moon-phase-lbl {
       font-size: 11px; color: var(--muted); letter-spacing: 0.6px; text-transform: uppercase;
     }
+    .moon-sign-lbl {
+      font-size: 12px; color: var(--gold); letter-spacing: 0.4px; margin-top: 2px;
+    }
     .tide-chip-row {
       margin-top: 8px; display: flex; gap: 14px; justify-content: center; align-items: center;
     }
@@ -587,6 +590,7 @@
   <div class="moon-display" id="moon-display">
     <div id="moon-em"></div>
     <div class="moon-phase-lbl" id="moon-lbl">—</div>
+    <div class="moon-sign-lbl" id="moon-sign-lbl"></div>
   </div>
   <div class="tide-chip-row" id="tide-moon-bar">
     <span class="tm-chip"><span class="tm-em" id="tide-em">〜</span><span id="tide-lbl">—</span></span>
@@ -1653,6 +1657,54 @@ document.querySelectorAll('#ins-period .ins-period-btn').forEach(b => {
 const STORM_KEY = 'a9bd1f4a-4d30-11f1-b099-0242ac120004-a9bd20bc-4d30-11f1-b099-0242ac120004';
 
 // ─── MOON PHASE ───
+function getMoonSign() {
+  // Meeus Astronomical Algorithms Ch.47 simplified — accurate to ~0.5°
+  const J2000 = Date.UTC(2000, 0, 1, 12, 0, 0);
+  const d = (Date.now() - J2000) / 86400000;
+  const toRad = x => x * Math.PI / 180;
+  const norm  = x => ((x % 360) + 360) % 360;
+  // Moon mean elements
+  const L  = norm(218.3164477 + 13.17639648 * d);   // mean longitude
+  const M  = norm(134.9633964 + 13.06499295 * d);   // mean anomaly
+  const Mp = norm(357.5291092 +  0.98564290 * d);   // Sun mean anomaly
+  const D  = norm(297.8501921 + 12.19074912 * d);   // mean elongation
+  const F  = norm( 93.2720950 + 13.22935024 * d);   // argument of latitude
+  // Principal longitude corrections (Meeus Table 47.A, top terms)
+  let dL = 0;
+  dL += 6.288774 * Math.sin(toRad(M));
+  dL += 1.274027 * Math.sin(toRad(2*D - M));
+  dL += 0.658314 * Math.sin(toRad(2*D));
+  dL += 0.213618 * Math.sin(toRad(2*M));
+  dL -= 0.185116 * Math.sin(toRad(Mp));
+  dL -= 0.114332 * Math.sin(toRad(2*F));
+  dL += 0.058793 * Math.sin(toRad(2*D - 2*M));
+  dL += 0.057066 * Math.sin(toRad(2*D - Mp - M));
+  dL += 0.053322 * Math.sin(toRad(2*D + M));
+  dL += 0.045758 * Math.sin(toRad(2*D - Mp));
+  dL -= 0.040923 * Math.sin(toRad(Mp - M));
+  dL -= 0.034720 * Math.sin(toRad(D));
+  dL -= 0.030383 * Math.sin(toRad(Mp + M));
+  const lon = norm(L + dL);
+  const signIdx = Math.floor(lon / 30);
+  const signs = [
+    { name: 'Aries',       symbol: '♈' },
+    { name: 'Taurus',      symbol: '♉' },
+    { name: 'Gemini',      symbol: '♊' },
+    { name: 'Cancer',      symbol: '♋' },
+    { name: 'Leo',         symbol: '♌' },
+    { name: 'Virgo',       symbol: '♍' },
+    { name: 'Libra',       symbol: '♎' },
+    { name: 'Scorpio',     symbol: '♏' },
+    { name: 'Sagittarius', symbol: '♐' },
+    { name: 'Capricorn',   symbol: '♑' },
+    { name: 'Aquarius',    symbol: '♒' },
+    { name: 'Pisces',      symbol: '♓' },
+  ];
+  const s = signs[signIdx];
+  const deg = Math.floor(lon % 30);
+  return { sign: s.name, symbol: s.symbol, degrees: deg, longitude: lon };
+}
+
 function getMoonPhase() {
   const knownNew = new Date('2000-01-06T18:14:00Z');
   const synodic  = 29.53058867;
@@ -1906,11 +1958,14 @@ let cachedTideMoon = null;
 // ─── INIT TIDE + MOON ───
 async function initTideMoon() {
   const moon = getMoonPhase();
+  const sign = getMoonSign();
   // Show moon immediately
-  const moonEm  = document.getElementById('moon-em');
-  const moonLbl = document.getElementById('moon-lbl');
-  if (moonEm)  moonEm.innerHTML   = moonSVG(moon.phaseDays, 72);
-  if (moonLbl) moonLbl.textContent = `${moon.name} ${moon.illum}%`;
+  const moonEm   = document.getElementById('moon-em');
+  const moonLbl  = document.getElementById('moon-lbl');
+  const signLbl  = document.getElementById('moon-sign-lbl');
+  if (moonEm)  moonEm.innerHTML    = moonSVG(moon.phaseDays, 72);
+  if (moonLbl) moonLbl.textContent = `${moon.name}  ·  ${moon.illum}%`;
+  if (signLbl) signLbl.textContent = `${sign.symbol} Moon in ${sign.sign}  ${sign.degrees}°`;
 
   if (!navigator.geolocation) return;
   navigator.geolocation.getCurrentPosition(async pos => {
