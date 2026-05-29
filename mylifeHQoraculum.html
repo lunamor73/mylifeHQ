@@ -314,19 +314,19 @@
       margin-top: 14px; display: flex; flex-direction: column; align-items: center; gap: 6px;
     }
     .moon-phase-lbl {
-      font-size: 11px; color: var(--muted); letter-spacing: 0.6px; text-transform: uppercase;
+      font-size: 11px; color: var(--muted); letter-spacing: 0.6px; text-transform: uppercase; font-family: inherit;
     }
     .moon-sign-lbl {
-      font-size: 12px; color: var(--gold); letter-spacing: 0.4px; margin-top: 2px;
+      font-size: 12px; color: var(--gold); letter-spacing: 0.4px; margin-top: 2px; font-family: inherit;
     }
     .tide-chip-row {
       margin-top: 8px; display: flex; gap: 14px; justify-content: center; align-items: center;
     }
     .tm-chip {
       display: flex; align-items: center; gap: 5px;
-      font-size: 11px; color: var(--muted); letter-spacing: 0.4px;
+      font-size: 11px; color: var(--muted); letter-spacing: 0.4px; font-family: inherit;
     }
-    .tm-em { font-size: 17px; line-height: 1; }
+    .tm-em { font-size: 17px; line-height: 1; font-family: inherit; }
     .tm-sep { color: var(--border); }
     .tide-ctx {
       margin-bottom: 6px; padding: 8px 12px; border-radius: 10px;
@@ -1687,18 +1687,18 @@ function getMoonSign() {
   const lon = norm(L + dL);
   const signIdx = Math.floor(lon / 30);
   const signs = [
-    { name: 'Aries',       symbol: '♈' },
-    { name: 'Taurus',      symbol: '♉' },
-    { name: 'Gemini',      symbol: '♊' },
-    { name: 'Cancer',      symbol: '♋' },
-    { name: 'Leo',         symbol: '♌' },
-    { name: 'Virgo',       symbol: '♍' },
-    { name: 'Libra',       symbol: '♎' },
-    { name: 'Scorpio',     symbol: '♏' },
-    { name: 'Sagittarius', symbol: '♐' },
-    { name: 'Capricorn',   symbol: '♑' },
-    { name: 'Aquarius',    symbol: '♒' },
-    { name: 'Pisces',      symbol: '♓' },
+    { name: 'Aries',       symbol: '♈︎' },
+    { name: 'Taurus',      symbol: '♉︎' },
+    { name: 'Gemini',      symbol: '♊︎' },
+    { name: 'Cancer',      symbol: '♋︎' },
+    { name: 'Leo',         symbol: '♌︎' },
+    { name: 'Virgo',       symbol: '♍︎' },
+    { name: 'Libra',       symbol: '♎︎' },
+    { name: 'Scorpio',     symbol: '♏︎' },
+    { name: 'Sagittarius', symbol: '♐︎' },
+    { name: 'Capricorn',   symbol: '♑︎' },
+    { name: 'Aquarius',    symbol: '♒︎' },
+    { name: 'Pisces',      symbol: '♓︎' },
   ];
   const s = signs[signIdx];
   const deg = Math.floor(lon % 30);
