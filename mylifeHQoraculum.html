@@ -2419,5 +2419,30 @@ function mundusCopy() {
   </div>
 </div>
 
+
+<script>
+// ── Service Worker: keeps saved PWA (iPhone / desktop) up to date ──────────
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('./sw.js', { updateViaCache: 'none' })
+    .then(reg => {
+      // Check for updates every time the app comes to foreground
+      document.addEventListener('visibilitychange', () => {
+        if (document.visibilityState === 'visible') reg.update();
+      });
+      // When a new SW is found and ready, reload automatically
+      reg.addEventListener('updatefound', () => {
+        const newSW = reg.installing;
+        newSW.addEventListener('statechange', () => {
+          if (newSW.state === 'installed' && navigator.serviceWorker.controller) {
+            // Brief delay so current action finishes, then reload fresh
+            setTimeout(() => window.location.reload(), 400);
+          }
+        });
+      });
+    })
+    .catch(() => {}); // silently ignore if SW unavailable (file:// etc)
+}
+</script>
+
 </body>
 </html>
