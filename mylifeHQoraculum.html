@@ -2893,171 +2893,96 @@ if(typeof window.buildHistoryPage==='function'){
 
 })();
 </script>
-<!-- ORACULUM_ARCHIVE_V1 -->
+
+<!-- ORACULUM_ARCHIVE_V2 -->
 <script>
 (function(){
 'use strict';
 
+var _origGet = Storage.prototype.getItem;
+var _origSet = Storage.prototype.setItem;
+
+function getRaw(key){
+  return _origGet.call(localStorage, key);
+}
 function getH(){
-  try{return JSON.parse(localStorage.getItem('phq-history')||'[]');}catch(e){return[];}
+  try{return JSON.parse(getRaw('phq-history')||'[]');}catch(e){return[];}
 }
 function getArchive(){
-  try{return JSON.parse(localStorage.getItem('phq-insight-archive')||'[]');}catch(e){return[];}
+  try{return JSON.parse(getRaw('phq-insight-archive')||'[]');}catch(e){return[];}
 }
 
-/* compute a stats snapshot from a history array */
-function computeStats(hist){
-  if(!hist.length) return null;
-  var totalMins=0, lunadoms={}, dirs={}, lynCounts={};
-  var earliest=Infinity, latest=-Infinity;
-  hist.forEach(function(e){
-    totalMins += Number(e.timeMins)||0;
-    if(e.lunadom) lunadoms[e.lunadom]=(lunadoms[e.lunadom]||0)+1;
-    if(e.domain)  lunadoms[e.domain] =(lunadoms[e.domain]||0)+1;  // fallback
-    if(e.direction) dirs[e.direction]=(dirs[e.direction]||0)+1;
-    if(e.lynStatus) lynCounts[e.lynStatus]=(lynCounts[e.lynStatus]||0)+1;
-    if(e.ts){ if(e.ts<earliest)earliest=e.ts; if(e.ts>latest)latest=e.ts; }
-  });
-  return {
-    count: hist.length,
-    totalMins: Math.round(totalMins),
-    lunadoms: lunadoms,
-    directions: dirs,
-    lynStatus: lynCounts,
-    earliest: earliest===Infinity?null:earliest,
-    latest: latest===-Infinity?null:latest,
-    archivedAt: Date.now()
-  };
+/* ── Is the insights page currently visible? ──────────────────────────── */
+function onInsightsPage(){
+  /* try known IDs — adjust if the app uses different ones */
+  var ids = ['p6','insights-page','insights','page-insights'];
+  for(var i=0;i<ids.length;i++){
+    var el=document.getElementById(ids[i]);
+    if(el && el.offsetParent !== null) return true;
+  }
+  return false;
 }
 
-function fmtDate(ts){
-  if(!ts) return '?';
-  return new Date(ts).toLocaleDateString('en-AU',{day:'numeric',month:'short',year:'numeric'});
-}
+/* ── Override getItem: insights page sees archive + current ───────────── */
+Storage.prototype.getItem = function(k){
+  var raw = _origGet.call(this, k);
+  if(k === 'phq-history' && onInsightsPage()){
+    try{
+      var current = JSON.parse(raw || '[]');
+      var archived = getArchive();
+      if(archived.length){
+        /* deduplicate by ts, merge, sort newest-first */
+        var seen = {};
+        var merged = archived.concat(current).filter(function(e){
+          var key = String(e.ts);
+          if(seen[key]) return false;
+          seen[key] = true;
+          return true;
+        });
+        merged.sort(function(a,b){return b.ts - a.ts;});
+        return JSON.stringify(merged);
+      }
+    }catch(e){}
+  }
+  return raw;
+};
 
-/* ── Archive & Clear ─────────────────────────────────── */
+/* ── Archive & Clear ──────────────────────────────────────────────────── */
 function archiveAndClear(){
-  var hist=getH();
+  var hist = getH();
   if(!hist.length){alert('No history to archive.');return;}
-  var stats=computeStats(hist);
-  var arc=getArchive();
-  arc.push(stats);
-  localStorage.setItem('phq-insight-archive',JSON.stringify(arc));
-  /* clear via _origSet if available (won't trigger delete toast for a full wipe) */
-  var setter = (typeof _origSet==='function') ? _origSet : Storage.prototype.setItem;
-  setter.call(localStorage,'phq-history','[]');
-  if(typeof updateHistBtn==='function')updateHistBtn();
-  if(typeof buildHistoryPage==='function')buildHistoryPage();
-  renderArchivePanel();
-  alert('✓ '+hist.length+' check-ins archived. History cleared.');
+
+  /* merge new entries into archive (deduplicate by ts) */
+  var existing = getArchive();
+  var seenTs = {};
+  existing.forEach(function(e){seenTs[String(e.ts)]=true;});
+  var toAdd = hist.filter(function(e){return !seenTs[String(e.ts)];});
+
+  var newArchive = existing.concat(toAdd);
+  newArchive.sort(function(a,b){return b.ts - a.ts;});
+
+  _origSet.call(localStorage, 'phq-insight-archive', JSON.stringify(newArchive));
+  _origSet.call(localStorage, 'phq-history', '[]');
+
+  if(typeof updateHistBtn === 'function') updateHistBtn();
+  if(typeof buildHistoryPage === 'function') buildHistoryPage();
+
+  alert('✓ ' + hist.length + ' check-ins archived.
+Insights will show all-time data automatically.');
 }
 
-/* ── Archive panel (bottom sheet) ───────────────────── */
-function renderArchivePanel(){
-  var arc=getArchive();
-  var existing=document.getElementById('phq-archive-panel');
-  if(existing) existing.parentNode.removeChild(existing);
-  if(!arc.length) return;
-
-  var panel=document.createElement('div');
-  panel.id='phq-archive-panel';
-  panel.style.cssText=
-    'position:fixed;bottom:0;left:0;right:0;max-height:65vh;overflow-y:auto;'+
-    'background:#fff;border-top:2px solid #e8c96a;z-index:2147483646;'+
-    'font-family:-apple-system,BlinkMacSystemFont,sans-serif;'+
-    'box-shadow:0 -6px 32px rgba(0,0,0,.15);padding:16px 20px 32px;';
-
-  var hdr=document.createElement('div');
-  hdr.style.cssText='display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;';
-  var title=document.createElement('span');
-  title.textContent='Archived Insights';
-  title.style.cssText='font-size:17px;font-weight:700;color:#1a1a1a;';
-  var closeBtn=document.createElement('button');
-  closeBtn.textContent='✕';
-  closeBtn.style.cssText='background:none;border:none;font-size:20px;cursor:pointer;color:#888;line-height:1;padding:4px 8px;';
-  closeBtn.onclick=function(){if(panel.parentNode)panel.parentNode.removeChild(panel);};
-  hdr.appendChild(title); hdr.appendChild(closeBtn);
-  panel.appendChild(hdr);
-
-  arc.slice().reverse().forEach(function(s, revIdx){
-    var origIdx=arc.length-1-revIdx;
-    var card=document.createElement('div');
-    card.style.cssText=
-      'background:#f9f7f2;border-radius:14px;padding:14px 16px;margin-bottom:12px;'+
-      'border-left:4px solid #e8c96a;';
-
-    /* header row */
-    var row=document.createElement('div');
-    row.style.cssText='display:flex;justify-content:space-between;align-items:baseline;margin-bottom:10px;';
-    var period=document.createElement('span');
-    period.textContent=fmtDate(s.earliest)+' → '+fmtDate(s.latest);
-    period.style.cssText='font-weight:600;font-size:14px;color:#1a1a1a;';
-    var when=document.createElement('span');
-    when.textContent='Archived '+fmtDate(s.archivedAt);
-    when.style.cssText='font-size:12px;color:#999;';
-    row.appendChild(period); row.appendChild(when);
-    card.appendChild(row);
-
-    /* stat chips */
-    var chips=document.createElement('div');
-    chips.style.cssText='display:flex;flex-wrap:wrap;gap:8px;font-size:13px;';
-
-    function chip(label,val){
-      var el=document.createElement('span');
-      el.textContent=label+': '+val;
-      el.style.cssText='background:#fff;border:1px solid #e0d9c8;border-radius:8px;padding:3px 10px;white-space:nowrap;color:#444;';
-      return el;
-    }
-
-    chips.appendChild(chip('Check-ins',s.count));
-    if(s.totalMins) chips.appendChild(chip('Minutes',s.totalMins));
-
-    /* top domain */
-    if(s.lunadoms && Object.keys(s.lunadoms).length){
-      var topD=Object.keys(s.lunadoms).sort(function(a,b){return s.lunadoms[b]-s.lunadoms[a];})[0];
-      chips.appendChild(chip('Top domain',topD+' ×'+s.lunadoms[topD]));
-    }
-
-    /* LYN breakdown */
-    if(s.lynStatus){
-      Object.keys(s.lynStatus).sort().forEach(function(k){
-        chips.appendChild(chip(k,s.lynStatus[k]));
-      });
-    }
-
-    card.appendChild(chips);
-
-    /* delete this archive entry */
-    var del=document.createElement('button');
-    del.textContent='Remove this archive';
-    del.style.cssText='margin-top:10px;font-size:12px;background:none;border:none;color:#c0392b;cursor:pointer;padding:0;text-decoration:underline;';
-    del.onclick=function(e){
-      e.stopPropagation();
-      if(!confirm('Remove this archived snapshot?')) return;
-      var a=getArchive(); a.splice(origIdx,1);
-      localStorage.setItem('phq-insight-archive',JSON.stringify(a));
-      renderArchivePanel();
-    };
-    card.appendChild(del);
-    panel.appendChild(card);
-  });
-
-  document.body.appendChild(panel);
-}
-
-/* ── inject "Archive & Clear" button into history page ─ */
+/* ── Inject "Archive & Clear" button on history page ─────────────────── */
 function injectArchiveBtn(){
   if(document.getElementById('phq-archive-btn')) return;
-  /* look for any history card to find the parent page */
-  var cards=document.querySelectorAll('.hist-card');
+  var cards = document.querySelectorAll('.hist-card');
   if(!cards.length) return;
-  var pg=cards[0].parentNode;
+  var pg = cards[0].parentNode;
   if(!pg) return;
 
-  var btn=document.createElement('button');
-  btn.id='phq-archive-btn';
-  btn.textContent='Archive & Clear History';
-  btn.style.cssText=
+  var btn = document.createElement('button');
+  btn.id = 'phq-archive-btn';
+  btn.textContent = 'Archive & Clear History';
+  btn.style.cssText =
     'display:block;width:calc(100% - 32px);margin:12px 16px 4px;padding:14px;'+
     'background:transparent;border:1.5px solid #e8c96a;border-radius:12px;'+
     'color:#9a7210;font-size:14px;font-weight:600;cursor:pointer;'+
@@ -3066,46 +2991,22 @@ function injectArchiveBtn(){
   btn.addEventListener('mouseenter',function(){btn.style.background='#fdf6e3';});
   btn.addEventListener('mouseleave',function(){btn.style.background='transparent';});
   btn.addEventListener('click',function(){
-    if(confirm('Save a snapshot of all insights, then clear history? The raw check-in data will be gone but stats are preserved.'))
-      archiveAndClear();
+    if(confirm(
+      'Archive all check-ins and clear history?
+
+'+
+      'Your insights page will continue showing all-time data —
+'+
+      'past and future check-ins combined.'
+    )) archiveAndClear();
   },false);
   pg.insertBefore(btn, pg.firstChild);
 }
 
-/* ── inject "View Archives" button into insights page ── */
-function injectViewArchivesBtn(){
-  if(document.getElementById('phq-view-archive-btn')) return;
-  if(!getArchive().length) return;
-  /* try common insight page IDs */
-  var pg=document.getElementById('p6')||document.getElementById('insights-page');
-  if(!pg) return;
-
-  var btn=document.createElement('button');
-  btn.id='phq-view-archive-btn';
-  btn.textContent='View Archived Insights';
-  btn.style.cssText=
-    'display:block;width:calc(100% - 32px);margin:16px 16px 0;padding:14px;'+
-    'background:transparent;border:1.5px solid #e8c96a;border-radius:12px;'+
-    'color:#9a7210;font-size:14px;font-weight:600;cursor:pointer;'+
-    'font-family:inherit;-webkit-tap-highlight-color:transparent;touch-action:manipulation;';
-  btn.addEventListener('click',renderArchivePanel,false);
-  pg.insertBefore(btn, pg.firstChild);
-}
-
-/* ── watch DOM for page transitions ──────────────────── */
-var _mo2=new MutationObserver(function(){
-  injectArchiveBtn();
-  injectViewArchivesBtn();
-});
-_mo2.observe(document.body,{childList:true,subtree:true});
-document.addEventListener('click',function(){
-  setTimeout(function(){injectArchiveBtn();injectViewArchivesBtn();},120);
-},true);
-
-/* auto-show archive panel when opening app with no history but there is an archive */
-setTimeout(function(){
-  if(!getH().length && getArchive().length) renderArchivePanel();
-},1200);
+/* ── Watch DOM ─────────────────────────────────────────────────────────── */
+var _mo = new MutationObserver(function(){ injectArchiveBtn(); });
+_mo.observe(document.body, {childList:true, subtree:true});
+document.addEventListener('click', function(){setTimeout(injectArchiveBtn, 120);}, true);
 
 })();
 </script>
