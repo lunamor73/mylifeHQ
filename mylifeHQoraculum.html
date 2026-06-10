@@ -2450,5 +2450,13 @@ if ('serviceWorker' in navigator) {
 .hist-inner { background: var(--surface); position: relative; z-index: 1; }
 .hist-del-bg { position: absolute; inset: 0; background: rgba(180,40,40,0.85); display: flex; align-items: center; justify-content: flex-end; padding-right: 24px; color: #fff; font-size: 13px; font-weight: 700; letter-spacing: 0.5px; pointer-events: none; }
 </style>
+<style>
+.hist-card { position: relative !important; }
+.hist-inner { background: var(--surface); position: relative; z-index: 1; }
+.hist-del-bg { position: absolute; inset: 0; background: rgba(180,40,40,0.85); display: flex; align-items: center; justify-content: flex-end; padding-right: 24px; color: #fff; font-size: 14px; font-weight: 700; pointer-events: none; }
+.hist-undo-toast { position: fixed; bottom: 32px; left: 50%; transform: translateX(-50%); background: #222; color: #fff; border-radius: 12px; padding: 13px 18px; display: flex; align-items: center; gap: 14px; font-size: 13px; font-weight: 500; z-index: 999; box-shadow: 0 4px 20px rgba(0,0,0,0.3); opacity: 0; transition: opacity 0.2s; pointer-events: none; white-space: nowrap; }
+.hist-undo-toast.show { opacity: 1; pointer-events: all; }
+.hist-undo-btn { background: none; border: none; color: #e8c96a; font-size: 14px; font-weight: 700; cursor: pointer; padding: 0; }
+</style>
 </body>
 </html>
