@@ -2894,14 +2894,18 @@ if(typeof window.buildHistoryPage==='function'){
 })();
 </script>
 
-<!-- ORACULUM_ARCHIVE_V2 -->
+
+<!-- ORACULUM_ARCHIVE_V3 -->
 <script>
 (function(){
 'use strict';
 
+/* save originals BEFORE any other patch has a chance to replace them
+   (this script runs last since it's injected at </body>) */
 var _origGet = Storage.prototype.getItem;
 var _origSet = Storage.prototype.setItem;
 
+/* read without triggering our own overrides */
 function getRaw(key){
   return _origGet.call(localStorage, key);
 }
@@ -2911,102 +2915,73 @@ function getH(){
 function getArchive(){
   try{return JSON.parse(getRaw('phq-insight-archive')||'[]');}catch(e){return[];}
 }
+function saveArchive(arr){
+  _origSet.call(localStorage,'phq-insight-archive',JSON.stringify(arr));
+}
 
-/* ── Is the insights page currently visible? ──────────────────────────── */
+/* add entries to archive, deduplicating by ts */
+function archiveEntries(entries){
+  if(!entries||!entries.length) return;
+  var arc = getArchive();
+  var seenTs = {};
+  arc.forEach(function(e){seenTs[String(e.ts)]=true;});
+  var toAdd = entries.filter(function(e){return !seenTs[String(e.ts)];});
+  if(toAdd.length){
+    arc = arc.concat(toAdd);
+    arc.sort(function(a,b){return b.ts-a.ts;});
+    saveArchive(arc);
+  }
+}
+
+/* ── setItem override: auto-archive any entry removed from phq-history ── */
+Storage.prototype.setItem = function(k, v){
+  if(k === 'phq-history'){
+    try{
+      var prevH = getH();          /* raw current, before write */
+      var newH  = JSON.parse(v||'[]');
+      if(prevH.length > newH.length){
+        /* find what was removed */
+        var newMap = {};
+        newH.forEach(function(e){newMap[String(e.ts)]=true;});
+        var removed = prevH.filter(function(e){return !newMap[String(e.ts)];});
+        if(removed.length) archiveEntries(removed);
+      }
+    }catch(err){}
+  }
+  /* chain to whatever was the previous setItem (may be V3B's interceptor) */
+  _origSet.call(this, k, v);
+};
+
+/* ── getItem override: insights page sees archive + current merged ─────── */
 function onInsightsPage(){
-  /* try known IDs — adjust if the app uses different ones */
-  var ids = ['p6','insights-page','insights','page-insights'];
+  var ids=['p6','insights-page','insights','page-insights','page6'];
   for(var i=0;i<ids.length;i++){
     var el=document.getElementById(ids[i]);
-    if(el && el.offsetParent !== null) return true;
+    if(el && el.offsetParent!==null) return true;
   }
   return false;
 }
 
-/* ── Override getItem: insights page sees archive + current ───────────── */
 Storage.prototype.getItem = function(k){
   var raw = _origGet.call(this, k);
-  if(k === 'phq-history' && onInsightsPage()){
+  if(k==='phq-history' && onInsightsPage()){
     try{
-      var current = JSON.parse(raw || '[]');
+      var current  = JSON.parse(raw||'[]');
       var archived = getArchive();
       if(archived.length){
-        /* deduplicate by ts, merge, sort newest-first */
-        var seen = {};
+        var seen={};
         var merged = archived.concat(current).filter(function(e){
-          var key = String(e.ts);
+          var key=String(e.ts);
           if(seen[key]) return false;
-          seen[key] = true;
-          return true;
+          seen[key]=true; return true;
         });
-        merged.sort(function(a,b){return b.ts - a.ts;});
+        merged.sort(function(a,b){return b.ts-a.ts;});
         return JSON.stringify(merged);
       }
-    }catch(e){}
+    }catch(err){}
   }
   return raw;
 };
-
-/* ── Archive & Clear ──────────────────────────────────────────────────── */
-function archiveAndClear(){
-  var hist = getH();
-  if(!hist.length){alert('No history to archive.');return;}
-
-  /* merge new entries into archive (deduplicate by ts) */
-  var existing = getArchive();
-  var seenTs = {};
-  existing.forEach(function(e){seenTs[String(e.ts)]=true;});
-  var toAdd = hist.filter(function(e){return !seenTs[String(e.ts)];});
-
-  var newArchive = existing.concat(toAdd);
-  newArchive.sort(function(a,b){return b.ts - a.ts;});
-
-  _origSet.call(localStorage, 'phq-insight-archive', JSON.stringify(newArchive));
-  _origSet.call(localStorage, 'phq-history', '[]');
-
-  if(typeof updateHistBtn === 'function') updateHistBtn();
-  if(typeof buildHistoryPage === 'function') buildHistoryPage();
-
-  alert('✓ ' + hist.length + ' check-ins archived.
-Insights will show all-time data automatically.');
-}
-
-/* ── Inject "Archive & Clear" button on history page ─────────────────── */
-function injectArchiveBtn(){
-  if(document.getElementById('phq-archive-btn')) return;
-  var cards = document.querySelectorAll('.hist-card');
-  if(!cards.length) return;
-  var pg = cards[0].parentNode;
-  if(!pg) return;
-
-  var btn = document.createElement('button');
-  btn.id = 'phq-archive-btn';
-  btn.textContent = 'Archive & Clear History';
-  btn.style.cssText =
-    'display:block;width:calc(100% - 32px);margin:12px 16px 4px;padding:14px;'+
-    'background:transparent;border:1.5px solid #e8c96a;border-radius:12px;'+
-    'color:#9a7210;font-size:14px;font-weight:600;cursor:pointer;'+
-    'font-family:inherit;transition:background 0.15s;'+
-    '-webkit-tap-highlight-color:transparent;touch-action:manipulation;';
-  btn.addEventListener('mouseenter',function(){btn.style.background='#fdf6e3';});
-  btn.addEventListener('mouseleave',function(){btn.style.background='transparent';});
-  btn.addEventListener('click',function(){
-    if(confirm(
-      'Archive all check-ins and clear history?
-
-'+
-      'Your insights page will continue showing all-time data —
-'+
-      'past and future check-ins combined.'
-    )) archiveAndClear();
-  },false);
-  pg.insertBefore(btn, pg.firstChild);
-}
-
-/* ── Watch DOM ─────────────────────────────────────────────────────────── */
-var _mo = new MutationObserver(function(){ injectArchiveBtn(); });
-_mo.observe(document.body, {childList:true, subtree:true});
-document.addEventListener('click', function(){setTimeout(injectArchiveBtn, 120);}, true);
 
 })();
 </script>
