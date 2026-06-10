@@ -2778,40 +2778,35 @@ if ('serviceWorker' in navigator) {
   document.addEventListener('click',function(){var pg=document.getElementById('hist-page');if(pg&&pg.offsetParent!==null)decoratePage(pg);},true);
 })();
 </script>
-<!-- ORACULUM_DELETE_V3 -->
+
+<!-- ORACULUM_DELETE_V3B -->
 <script>
 (function(){
 'use strict';
 
-/* ── helpers ── */
 function getH(){
   try{return JSON.parse(localStorage.getItem('phq-history')||'[]');}catch(e){return[];}
 }
 
-/* ── toast ── */
 function showDelToast(entry){
-  var old=document.getElementById('phq-del-toast-v3');
+  var old=document.getElementById('phq-del-toast-v3b');
   if(old){clearTimeout(old._t);if(old.parentNode)old.parentNode.removeChild(old);}
-
   var t=document.createElement('div');
-  t.id='phq-del-toast-v3';
+  t.id='phq-del-toast-v3b';
   t.style.cssText=
     'position:fixed;bottom:40px;left:50%;transform:translateX(-50%);'+
     'background:#1a1a1a;color:#fff;border-radius:16px;padding:14px 22px;'+
     'display:flex;align-items:center;gap:18px;font-size:14px;font-weight:500;'+
     'z-index:2147483647;box-shadow:0 6px 32px rgba(0,0,0,.5);white-space:nowrap;'+
-    'font-family:-apple-system,BlinkMacSystemFont,sans-serif;'+
-    '-webkit-font-smoothing:antialiased;';
-
+    'font-family:-apple-system,BlinkMacSystemFont,sans-serif;-webkit-font-smoothing:antialiased;';
   var msg=document.createElement('span');
   msg.textContent='Check-in removed';
   t.appendChild(msg);
-
   var btn=document.createElement('button');
   btn.textContent='Undo';
   btn.style.cssText=
     'background:none;border:none;color:#e8c96a;font-weight:700;font-size:14px;'+
-    'cursor:pointer;padding:4px 2px;font-family:inherit;'+
+    'cursor:pointer;padding:4px 6px;font-family:inherit;'+
     '-webkit-tap-highlight-color:transparent;touch-action:manipulation;';
   btn.addEventListener('click',function(e){
     e.stopPropagation();
@@ -2820,18 +2815,16 @@ function showDelToast(entry){
     var h=getH();
     h.push(entry);
     h.sort(function(a,b){return b.ts-a.ts;});
-    // Use _origSet to avoid triggering our own interceptor
     _origSet.call(localStorage,'phq-history',JSON.stringify(h));
     if(typeof updateHistBtn==='function')updateHistBtn();
     if(typeof buildHistoryPage==='function')buildHistoryPage();
   },false);
   t.appendChild(btn);
-
   document.body.appendChild(t);
   t._t=setTimeout(function(){if(t.parentNode)t.parentNode.removeChild(t);},5000);
 }
 
-/* ── localStorage interceptor — catches ALL deletions (swipe + × button) ── */
+/* intercept ALL localStorage writes — catches swipe delete too */
 var _origSet=Storage.prototype.setItem;
 Storage.prototype.setItem=function(k,v){
   var prevH=(k==='phq-history')?getH():null;
@@ -2842,49 +2835,43 @@ Storage.prototype.setItem=function(k,v){
       if(newH.length<prevH.length){
         var newMap={};
         newH.forEach(function(e){newMap[String(e.ts)]=true;});
-        var deleted=prevH.filter(function(e){return!newMap[String(e.ts)];});
-        if(deleted.length>0)showDelToast(deleted[0]);
+        var gone=prevH.filter(function(e){return!newMap[String(e.ts)];});
+        if(gone.length)showDelToast(gone[0]);
       }
     }catch(e){}
   }
 };
 
-/* ── × button (desktop only via mouseenter) ── */
+/* × button — search WHOLE document, no parent ID dependency */
 function decorateCards(){
-  var pg=document.getElementById('hist-page')||document.getElementById('p5');
-  if(!pg)return;
-  var cards=pg.querySelectorAll('.hist-card');
+  var cards=document.querySelectorAll('.hist-card:not([data-v3b])');
+  if(!cards.length)return;
   var hist=getH();
   cards.forEach(function(card,i){
-    if(card.hasAttribute('data-v3-dec')||i>=hist.length)return;
+    card.setAttribute('data-v3b','1');
+    if(i>=hist.length)return;
     var entry=hist[i];
-    card.setAttribute('data-v3-dec',String(entry.ts||i));
-
-    /* ensure card is a positioning parent */
-    if(!card.style.position)card.style.position='relative';
-
+    var pos=window.getComputedStyle(card).position;
+    if(pos==='static')card.style.position='relative';
     var xb=document.createElement('button');
-    xb.setAttribute('aria-label','Delete check-in');
+    xb.setAttribute('aria-label','Delete');
     xb.innerHTML='&times;';
     xb.style.cssText=
       'position:absolute;top:10px;right:10px;width:30px;height:30px;'+
       'border-radius:50%;border:none;background:rgba(0,0,0,0.1);'+
-      'color:rgba(0,0,0,0.3);font-size:20px;line-height:1;cursor:pointer;'+
+      'color:rgba(0,0,0,0.35);font-size:20px;line-height:1;cursor:pointer;'+
       'padding:0;z-index:5;display:none;align-items:center;justify-content:center;'+
       '-webkit-tap-highlight-color:transparent;touch-action:manipulation;';
-
-    /* show on desktop hover only */
     card.addEventListener('mouseenter',function(){xb.style.display='flex';},false);
     card.addEventListener('mouseleave',function(){xb.style.display='none';},false);
     xb.addEventListener('mouseenter',function(){
       xb.style.background='rgba(180,40,40,0.85)';xb.style.color='#fff';
     },false);
     xb.addEventListener('mouseleave',function(){
-      xb.style.background='rgba(0,0,0,0.1)';xb.style.color='rgba(0,0,0,0.3)';
+      xb.style.background='rgba(0,0,0,0.1)';xb.style.color='rgba(0,0,0,0.35)';
     },false);
     xb.addEventListener('click',function(e){
       e.stopPropagation();
-      /* delete from storage — interceptor will show the toast */
       var h=getH().filter(function(r){return String(r.ts)!==String(entry.ts);});
       localStorage.setItem('phq-history',JSON.stringify(h));
       if(typeof updateHistBtn==='function')updateHistBtn();
@@ -2892,26 +2879,17 @@ function decorateCards(){
       card.style.opacity='0';
       setTimeout(function(){if(card.parentNode)card.parentNode.removeChild(card);},220);
     },false);
-
     card.appendChild(xb);
   });
 }
 
-/* MutationObserver fires whenever DOM changes — reliable even if buildHistoryPage is private */
-var _mo=new MutationObserver(function(){decorateCards();});
+var _mo=new MutationObserver(decorateCards);
 _mo.observe(document.body,{childList:true,subtree:true});
-
-/* Also wrap buildHistoryPage if it's accessible as a global */
-if(typeof window.buildHistoryPage==='function'){
-  var _origBHP=window.buildHistoryPage;
-  window.buildHistoryPage=function(){
-    _origBHP.apply(this,arguments);
-    setTimeout(decorateCards,80);
-  };
-}
-
-/* And run on any click (belt-and-suspenders) */
 document.addEventListener('click',function(){setTimeout(decorateCards,60);},true);
+if(typeof window.buildHistoryPage==='function'){
+  var _ob=window.buildHistoryPage;
+  window.buildHistoryPage=function(){_ob.apply(this,arguments);setTimeout(decorateCards,80);};
+}
 
 })();
 </script>
