@@ -420,14 +420,14 @@
     .hist-card-hdr { padding: 14px 16px; display: flex; flex-direction: column; gap: 5px; cursor: pointer; }
     .hist-card-hdr:active { background: var(--surface2); }
     .hist-row1 { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
-    .hist-when { font-size: 11px; color: var(--muted); }
+    .hist-when { font-size: 15px; color: var(--muted); }
     .hist-mode-chip {
       padding: 3px 9px; border-radius: 12px;
       background: var(--gold-dim); color: var(--gold);
       font-size: 10px; font-weight: 600;
       border: 1px solid rgba(232,201,106,0.25); white-space: nowrap;
     }
-    .hist-energy { font-size: 11px; color: var(--muted); }
+    .hist-energy { font-size: 15px; color: var(--muted); }
     .hist-domain { font-size: 13px; font-weight: 600; color: var(--text); }
     .hist-items { font-size: 12px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     .hist-expanded { border-top: 1px solid var(--border); padding: 14px 16px; display: none; flex-direction: column; gap: 10px; }
@@ -1410,7 +1410,7 @@ function buildHistoryPage() {
     const row1 = mk('div'); row1.className = 'hist-row1';
     const when = mk('span'); when.className = 'hist-when'; when.textContent = fmtDate(entry.ts);
     const enrg = mk('span'); enrg.className = 'hist-energy';
-    if (entry.zpd) { const e = {flow:'●',stretching:'◎',support:'○'}; enrg.textContent = e[entry.zpd] || ''; }
+    if (entry.zpd) { const e = {flow:'●',stretching:'◐',support:'○'}; enrg.textContent = e[entry.zpd] || ''; }
     else if (entry.energy) enrg.textContent = `⚡${entry.energy}/5`;
     const chip = mk('span'); chip.className = 'hist-mode-chip'; chip.textContent = 'Oraculum';
     row1.appendChild(when); row1.appendChild(chip); row1.appendChild(enrg);
