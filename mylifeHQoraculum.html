@@ -1412,6 +1412,7 @@ function buildHistoryPage() {
     const enrg = mk('span'); enrg.className = 'hist-energy';
     if (entry.zpd) { const e = {flow:'●',stretching:'◎',support:'○'}; enrg.textContent = e[entry.zpd] || ''; }
     else if (entry.energy) enrg.textContent = `⚡${entry.energy}/5`;
+    const chip = mk('span'); chip.className = 'hist-mode-chip'; chip.textContent = 'Oraculum';
     row1.appendChild(when); row1.appendChild(chip); row1.appendChild(enrg);
 
     const domain = mk('div'); domain.className = 'hist-domain'; domain.textContent = entryDomainLabel(entry);
