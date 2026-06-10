@@ -1432,7 +1432,14 @@ function buildHistoryPage() {
       else { const ta = mk('textarea'); ta.value = txt; document.body.appendChild(ta); ta.select(); document.execCommand('copy'); document.body.removeChild(ta); done(); }
     };
     exp.appendChild(promptTxt); exp.appendChild(copyBtn);
-    card.appendChild(hdr); card.appendChild(exp);
+    const inner = mk('div'); inner.className = 'hist-inner';
+    inner.appendChild(hdr); inner.appendChild(exp);
+    const delBg = mk('div'); delBg.className = 'hist-del-bg'; delBg.textContent = '🗑 Delete';
+    card.appendChild(delBg); card.appendChild(inner);
+    let _sx, _sy, _drag = false;
+    card.addEventListener('touchstart', e => { _sx=e.touches[0].clientX; _sy=e.touches[0].clientY; _drag=false; }, {passive:true});
+    card.addEventListener('touchmove', e => { const dx=e.touches[0].clientX-_sx, dy=e.touches[0].clientY-_sy; if(!_drag&&Math.abs(dy)>Math.abs(dx))return; _drag=true; if(dx<0){inner.style.transition='none'; inner.style.transform='translateX('+Math.max(dx,-120)+'px)';} }, {passive:true});
+    card.addEventListener('touchend', e => { if(!_drag)return; const dx=e.changedTouches[0].clientX-_sx; inner.style.transition='transform 0.25s ease'; if(dx<-80){inner.style.transform='translateX(-110%)'; setTimeout(()=>{const h=getHistory().filter(r=>r.id!==entry.id); localStorage.setItem('phq-history',JSON.stringify(h)); if(typeof updateHistBtn==='function')updateHistBtn(); card.style.transition='opacity 0.2s'; card.style.opacity='0'; setTimeout(()=>card.remove(),200);},250);}else{inner.style.transform='translateX(0)';} _drag=false; });
     body.appendChild(card);
   });
 
@@ -2438,5 +2445,10 @@ if ('serviceWorker' in navigator) {
 }
 </script>
 
+<style>
+.hist-card { position: relative !important; }
+.hist-inner { background: var(--surface); position: relative; z-index: 1; }
+.hist-del-bg { position: absolute; inset: 0; background: rgba(180,40,40,0.85); display: flex; align-items: center; justify-content: flex-end; padding-right: 24px; color: #fff; font-size: 13px; font-weight: 700; letter-spacing: 0.5px; pointer-events: none; }
+</style>
 </body>
 </html>
