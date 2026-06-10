@@ -2985,14 +2985,14 @@ Storage.prototype.getItem = function(k){
 
 })();
 </script>
-<!-- ORACULUM_FIREBASE_V1 -->
+
+
+<!-- ORACULUM_FIREBASE_V3 -->
 <script type="module">
 import { initializeApp }
   from 'https://www.gstatic.com/firebasejs/12.14.0/firebase-app.js';
 import { getFirestore, doc, getDoc, setDoc, onSnapshot }
   from 'https://www.gstatic.com/firebasejs/12.14.0/firebase-firestore.js';
-import { getAuth, GoogleAuthProvider, signInWithRedirect, getRedirectResult, onAuthStateChanged }
-  from 'https://www.gstatic.com/firebasejs/12.14.0/firebase-auth.js';
 
 const firebaseConfig = {
   apiKey:            "AIzaSyDiGQ_ncxfIb1NYbkfPPLnqLhotG8enZbQ",
@@ -3005,24 +3005,22 @@ const firebaseConfig = {
 
 const app = initializeApp(firebaseConfig);
 const db  = getFirestore(app);
-const auth = getAuth(app);
 
+/* Fixed user path — no auth needed */
+const USER_ID  = 'penguin73';
 const SYNC_KEYS = ['phq-history', 'phq-insight-archive'];
-let _syncing = false; // prevent write-back loops
+let _syncing = false;
+let _setItemWrapped = false;
+let _fbOrigSet = null;
 
-/* raw localStorage read (bypasses any getItem overrides) */
+function ref(key) { return doc(db, 'users', USER_ID, 'data', key); }
+
 function localRead(key) {
   try { return JSON.parse(localStorage.getItem(key) || '[]'); } catch(e) { return []; }
 }
-
-/* raw localStorage write (bypasses our own setItem wrapper) */
-let _fbOrigSet = null;
 function localWrite(key, arr) {
-  const setter = _fbOrigSet || Storage.prototype.setItem;
-  setter.call(localStorage, key, JSON.stringify(arr));
+  (_fbOrigSet || Storage.prototype.setItem).call(localStorage, key, JSON.stringify(arr));
 }
-
-/* merge two entry arrays, dedup by ts, sort newest-first */
 function merge(a, b) {
   const seen = {};
   return [...a, ...b].filter(e => {
@@ -3031,142 +3029,74 @@ function merge(a, b) {
     seen[k] = true; return true;
   }).sort((a, b) => b.ts - a.ts);
 }
-
-/* Firestore doc ref */
-function ref(uid, key) {
-  return doc(db, 'users', uid, 'data', key);
-}
-
-/* debounce */
 function debounce(fn, ms) {
-  let t;
-  return (...args) => { clearTimeout(t); t = setTimeout(() => fn(...args), ms); };
+  let t; return (...a) => { clearTimeout(t); t = setTimeout(() => fn(...a), ms); };
 }
 
-/* push a key's current local value to Firestore */
-const pushToCloud = debounce(async (uid, key) => {
+const pushToCloud = debounce(async (key) => {
   if (_syncing) return;
-  try {
-    const entries = localRead(key);
-    await setDoc(ref(uid, key), { entries, updatedAt: Date.now() });
-  } catch(e) { console.warn('[LUNAMOR sync] write error', key, e); }
+  try { await setDoc(ref(key), { entries: localRead(key), updatedAt: Date.now() }); }
+  catch(e) { console.warn('[LUNAMOR sync] write error', key, e.message); }
 }, 800);
 
-/* pull all sync keys from Firestore, merge with local, write back */
-async function pullFromCloud(uid) {
+async function pullFromCloud() {
   _syncing = true;
   let changed = false;
   for (const key of SYNC_KEYS) {
     try {
-      const snap = await getDoc(ref(uid, key));
+      const snap = await getDoc(ref(key));
       if (snap.exists()) {
-        const remote = snap.data().entries || [];
-        const local  = localRead(key);
-        const merged = merge(remote, local);
+        const merged = merge(snap.data().entries || [], localRead(key));
         localWrite(key, merged);
-        // write merged back so cloud stays canonical
-        await setDoc(ref(uid, key), { entries: merged, updatedAt: Date.now() });
+        await setDoc(ref(key), { entries: merged, updatedAt: Date.now() });
         changed = true;
       } else {
-        // no cloud data yet — push local up
         const local = localRead(key);
-        if (local.length) await setDoc(ref(uid, key), { entries: local, updatedAt: Date.now() });
+        if (local.length) await setDoc(ref(key), { entries: local, updatedAt: Date.now() });
       }
-    } catch(e) { console.warn('[LUNAMOR sync] pull error', key, e); }
+    } catch(e) { console.warn('[LUNAMOR sync] pull error', key, e.message); }
   }
   _syncing = false;
   if (changed) triggerRerender();
 }
 
-/* listen for changes pushed from another device */
-function listenForRemoteChanges(uid) {
+function listenForRemoteChanges() {
   SYNC_KEYS.forEach(key => {
-    onSnapshot(ref(uid, key), snap => {
+    onSnapshot(ref(key), snap => {
       if (_syncing || !snap.exists()) return;
       const remote = snap.data().entries || [];
       const local  = localRead(key);
       const localTs = {};
       local.forEach(e => localTs[String(e.ts)] = true);
       const incoming = remote.filter(e => !localTs[String(e.ts)]);
-      if (incoming.length) {
-        localWrite(key, merge(local, incoming));
-        triggerRerender();
-      }
+      if (incoming.length) { localWrite(key, merge(local, incoming)); triggerRerender(); }
     });
   });
 }
 
-/* wrap setItem so local writes sync to cloud */
-function wrapSetItem(uid) {
-  // capture whatever setItem is now (Archive V3 + V3B chains)
+function wrapSetItem() {
+  if (_setItemWrapped) return;
+  _setItemWrapped = true;
   _fbOrigSet = Storage.prototype.setItem;
-
   Storage.prototype.setItem = function(k, v) {
-    _fbOrigSet.call(this, k, v);      // run existing chain first
+    _fbOrigSet.call(this, k, v);
     if (!_syncing && SYNC_KEYS.includes(k)) {
-      pushToCloud(uid, k);
+      try { pushToCloud(k); } catch(e) {}
     }
   };
 }
 
-/* nudge the app to re-render history/insights */
 function triggerRerender() {
   try { if (typeof updateHistBtn === 'function') updateHistBtn(); } catch(e) {}
   try { if (typeof buildHistoryPage === 'function') buildHistoryPage(); } catch(e) {}
   window.dispatchEvent(new StorageEvent('storage', { key: 'phq-history' }));
 }
 
-/* sign-in overlay */
-function showSignIn() {
-  if (document.getElementById('phq-fb-signin')) return;
-  const overlay = document.createElement('div');
-  overlay.id = 'phq-fb-signin';
-  overlay.style.cssText =
-    'position:fixed;inset:0;background:rgba(255,255,255,0.97);z-index:2147483647;'+
-    'display:flex;flex-direction:column;align-items:center;justify-content:center;'+
-    'font-family:-apple-system,BlinkMacSystemFont,sans-serif;gap:18px;padding:32px;';
-
-  const title = Object.assign(document.createElement('div'), {
-    textContent: 'Sign in to sync your data'
-  });
-  title.style.cssText = 'font-size:20px;font-weight:700;color:#1a1a1a;text-align:center;';
-
-  const sub = Object.assign(document.createElement('div'), {
-    textContent: 'Your check-ins and insights will sync between iPhone and desktop.'
-  });
-  sub.style.cssText = 'font-size:14px;color:#666;text-align:center;max-width:280px;line-height:1.5;';
-
-  const btn = document.createElement('button');
-  btn.textContent = 'Sign in with Google';
-  btn.style.cssText =
-    'padding:16px 32px;background:#e8c96a;border:none;border-radius:14px;'+
-    'font-size:16px;font-weight:700;color:#1a1a1a;cursor:pointer;'+
-    '-webkit-tap-highlight-color:transparent;touch-action:manipulation;'+
-    'box-shadow:0 4px 16px rgba(232,201,106,0.4);';
-  btn.onclick = () => signInWithRedirect(auth, new GoogleAuthProvider());
-
-  overlay.append(title, sub, btn);
-  document.body.appendChild(overlay);
-}
-
-/* main */
 async function main() {
-  // handle Google redirect return (iOS PWA redirect sign-in)
-  try { await getRedirectResult(auth); } catch(e) {}
-
-  onAuthStateChanged(auth, async user => {
-    const overlay = document.getElementById('phq-fb-signin');
-    if (overlay) overlay.remove();
-
-    if (user) {
-      await pullFromCloud(user.uid);
-      listenForRemoteChanges(user.uid);
-      wrapSetItem(user.uid);
-      console.log('[LUNAMOR sync] active —', user.email);
-    } else {
-      setTimeout(showSignIn, 1200);
-    }
-  });
+  await pullFromCloud();
+  listenForRemoteChanges();
+  wrapSetItem();
+  console.log('[LUNAMOR sync] active — no-auth mode');
 }
 
 main();
