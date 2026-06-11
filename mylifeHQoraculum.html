@@ -2987,7 +2987,8 @@ Storage.prototype.getItem = function(k){
 </script>
 
 
-<!-- ORACULUM_FIREBASE_V3 -->
+
+<!-- ORACULUM_FIREBASE_V3_1 -->
 <script type="module">
 import { initializeApp }
   from 'https://www.gstatic.com/firebasejs/12.14.0/firebase-app.js';
@@ -3006,12 +3007,25 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const db  = getFirestore(app);
 
-/* Fixed user path — no auth needed */
-const USER_ID  = 'penguin73';
+const USER_ID   = 'penguin73';
 const SYNC_KEYS = ['phq-history', 'phq-insight-archive'];
+const TOMB_KEY  = 'phq-deleted-ts';  // tombstone list — deleted ts strings
 let _syncing = false;
 let _setItemWrapped = false;
 let _fbOrigSet = null;
+
+/* ── per-key debounced push ──────────────────────────────────────── */
+const _pushTimers = {};
+function pushToCloud(key) {
+  clearTimeout(_pushTimers[key]);
+  _pushTimers[key] = setTimeout(async () => {
+    if (_syncing) return;
+    const raw = localStorage.getItem(key);
+    const data = raw ? JSON.parse(raw) : [];
+    try { await setDoc(ref(key), { entries: data, updatedAt: Date.now() }); }
+    catch(e) { console.warn('[LUNAMOR sync] write error', key, e.message); }
+  }, 800);
+}
 
 function ref(key) { return doc(db, 'users', USER_ID, 'data', key); }
 
@@ -3021,27 +3035,47 @@ function localRead(key) {
 function localWrite(key, arr) {
   (_fbOrigSet || Storage.prototype.setItem).call(localStorage, key, JSON.stringify(arr));
 }
+function getTombstones() {
+  try { return new Set(JSON.parse(localStorage.getItem(TOMB_KEY) || '[]')); }
+  catch(e) { return new Set(); }
+}
+function addTombstones(tsArr) {
+  const existing = JSON.parse(localStorage.getItem(TOMB_KEY) || '[]');
+  const merged   = [...new Set([...existing, ...tsArr])];
+  (_fbOrigSet || Storage.prototype.setItem).call(localStorage, TOMB_KEY, JSON.stringify(merged));
+  pushToCloud(TOMB_KEY);
+}
+
+/* merge two arrays, deduping by ts and filtering tombstoned entries */
 function merge(a, b) {
+  const dead = getTombstones();
   const seen = {};
   return [...a, ...b].filter(e => {
     const k = String(e.ts);
-    if (seen[k]) return false;
+    if (dead.has(k) || seen[k]) return false;
     seen[k] = true; return true;
-  }).sort((a, b) => b.ts - a.ts);
+  }).sort((x, y) => y.ts - x.ts);
 }
-function debounce(fn, ms) {
-  let t; return (...a) => { clearTimeout(t); t = setTimeout(() => fn(...a), ms); };
-}
-
-const pushToCloud = debounce(async (key) => {
-  if (_syncing) return;
-  try { await setDoc(ref(key), { entries: localRead(key), updatedAt: Date.now() }); }
-  catch(e) { console.warn('[LUNAMOR sync] write error', key, e.message); }
-}, 800);
 
 async function pullFromCloud() {
   _syncing = true;
   let changed = false;
+
+  /* Pull tombstones first so merge() is aware of deletions */
+  try {
+    const tsnap = await getDoc(ref(TOMB_KEY));
+    if (tsnap.exists()) {
+      const remote = tsnap.data().entries || [];
+      const local  = JSON.parse(localStorage.getItem(TOMB_KEY) || '[]');
+      const united = [...new Set([...remote, ...local])];
+      (_fbOrigSet || Storage.prototype.setItem).call(localStorage, TOMB_KEY, JSON.stringify(united));
+    } else {
+      /* Push any local tombstones up */
+      const local = JSON.parse(localStorage.getItem(TOMB_KEY) || '[]');
+      if (local.length) await setDoc(ref(TOMB_KEY), { entries: local, updatedAt: Date.now() });
+    }
+  } catch(e) { console.warn('[LUNAMOR sync] tombstone pull error', e.message); }
+
   for (const key of SYNC_KEYS) {
     try {
       const snap = await getDoc(ref(key));
@@ -3061,14 +3095,32 @@ async function pullFromCloud() {
 }
 
 function listenForRemoteChanges() {
+  /* Tombstone listener — when another device deletes, apply here too */
+  onSnapshot(ref(TOMB_KEY), snap => {
+    if (_syncing || !snap.exists()) return;
+    const remote   = snap.data().entries || [];
+    const local    = JSON.parse(localStorage.getItem(TOMB_KEY) || '[]');
+    const localSet = new Set(local);
+    const newOnes  = remote.filter(t => !localSet.has(t));
+    if (!newOnes.length) return;
+    const united = [...new Set([...local, ...remote])];
+    (_fbOrigSet || Storage.prototype.setItem).call(localStorage, TOMB_KEY, JSON.stringify(united));
+    /* Apply new tombstones to local history */
+    const dead = new Set(united);
+    const h    = localRead('phq-history');
+    const filtered = h.filter(e => !dead.has(String(e.ts)));
+    if (filtered.length < h.length) { localWrite('phq-history', filtered); triggerRerender(); }
+  });
+
   SYNC_KEYS.forEach(key => {
     onSnapshot(ref(key), snap => {
       if (_syncing || !snap.exists()) return;
-      const remote = snap.data().entries || [];
-      const local  = localRead(key);
+      const remote  = snap.data().entries || [];
+      const local   = localRead(key);
+      const dead    = getTombstones();
       const localTs = {};
       local.forEach(e => localTs[String(e.ts)] = true);
-      const incoming = remote.filter(e => !localTs[String(e.ts)]);
+      const incoming = remote.filter(e => !localTs[String(e.ts)] && !dead.has(String(e.ts)));
       if (incoming.length) { localWrite(key, merge(local, incoming)); triggerRerender(); }
     });
   });
@@ -3079,9 +3131,25 @@ function wrapSetItem() {
   _setItemWrapped = true;
   _fbOrigSet = Storage.prototype.setItem;
   Storage.prototype.setItem = function(k, v) {
-    _fbOrigSet.call(this, k, v);
-    if (!_syncing && SYNC_KEYS.includes(k)) {
-      try { pushToCloud(k); } catch(e) {}
+    if (!_syncing && k === 'phq-history') {
+      /* Read BEFORE writing to detect deletions */
+      const prev  = localRead('phq-history');
+      _fbOrigSet.call(this, k, v);                  /* write + triggers Archive V3 */
+      const next    = JSON.parse(v || '[]');
+      const nextTs  = new Set(next.map(e => String(e.ts)));
+      const deleted = prev.filter(e => !nextTs.has(String(e.ts))).map(e => String(e.ts));
+      if (deleted.length) {
+        addTombstones(deleted);
+        /* Archive V3 writes phq-insight-archive directly (bypassing wrappers).
+           Push it explicitly after a short delay to let Archive V3 finish. */
+        setTimeout(() => { try { pushToCloud('phq-insight-archive'); } catch(e) {} }, 300);
+      }
+      pushToCloud('phq-history');
+    } else {
+      _fbOrigSet.call(this, k, v);
+      if (!_syncing && SYNC_KEYS.includes(k)) {
+        try { pushToCloud(k); } catch(e) {}
+      }
     }
   };
 }
@@ -3096,7 +3164,7 @@ async function main() {
   await pullFromCloud();
   listenForRemoteChanges();
   wrapSetItem();
-  console.log('[LUNAMOR sync] active — no-auth mode');
+  console.log('[LUNAMOR sync] active — no-auth v3.1 (tombstone + archive push)');
 }
 
 main();
