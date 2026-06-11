@@ -3210,27 +3210,43 @@ main();
   console.log('[LUNAMOR] insights getItem fix active (p6.active check)');
 })();
 </script>
-<!-- ORACULUM_OPEN_INSIGHTS_FIX -->
+
+<!-- ORACULUM_INSIGHTS_OBSERVER -->
 <script>
 (function() {
-  /* openInsights() calls buildInsights() before p6 gets class 'active',
-     so the merged getItem is bypassed. Re-call buildInsights() after the
-     animation settles (~400ms) when p6.active is guaranteed true. */
-  var _origOpenInsights = window.openInsights;
-  if (typeof _origOpenInsights !== 'function') {
-    console.warn('[LUNAMOR] openInsights not found — timing fix skipped');
-    return;
+  /* Watch p6 for the 'active' class being added.
+     When it appears, call buildInsights() so the getItem override
+     (which checks p6.active) returns merged history+archive data. */
+  var p6 = document.getElementById('p6');
+  if (!p6) {
+    /* p6 not in DOM yet — wait for it */
+    document.addEventListener('DOMContentLoaded', function() {
+      p6 = document.getElementById('p6');
+      if (p6) attachObserver(p6);
+    });
+  } else {
+    attachObserver(p6);
   }
-  window.openInsights = function() {
-    _origOpenInsights.apply(this, arguments);
-    setTimeout(function() {
-      var p6 = document.getElementById('p6');
-      if (p6 && p6.classList.contains('active') && typeof buildInsights === 'function') {
-        buildInsights();
-      }
-    }, 400);
-  };
-  console.log('[LUNAMOR] openInsights timing fix active');
+
+  function attachObserver(el) {
+    var wasActive = el.classList.contains('active');
+    var obs = new MutationObserver(function(mutations) {
+      mutations.forEach(function(m) {
+        if (m.attributeName === 'class') {
+          var isActive = el.classList.contains('active');
+          if (isActive && !wasActive) {
+            /* p6 just became active — rebuild insights with merged data */
+            if (typeof buildInsights === 'function') {
+              setTimeout(function() { buildInsights(); }, 50);
+            }
+          }
+          wasActive = isActive;
+        }
+      });
+    });
+    obs.observe(el, { attributes: true, attributeFilter: ['class'] });
+    console.log('[LUNAMOR] insights observer active');
+  }
 })();
 </script>
 </body>
