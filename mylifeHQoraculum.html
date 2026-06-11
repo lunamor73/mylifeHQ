@@ -3151,7 +3151,7 @@ function archiveNow(removedEntries) {
   try {
     const valid = removedEntries
       .map(normTs)
-      .filter(e => e && e.note);
+      .filter(Boolean);
     if (!valid.length) return;
     const raw     = localStorage.getItem(ARCH_KEY);
     const existing = raw ? JSON.parse(raw) : [];
