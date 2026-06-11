@@ -1447,7 +1447,9 @@ function buildHistoryPage() {
   const clearBtn = mk('button'); clearBtn.className = 'clear-btn'; clearBtn.textContent = 'Clear all history';
   clearBtn.onclick = () => {
     if (confirm(`Clear all ${hist.length} check-in${hist.length !== 1 ? 's' : ''}? This cannot be undone.`)) {
-      localStorage.removeItem(HIST_KEY); updateHistBtn(); buildHistoryPage();
+      // Archive before clearing so entries appear in Insights → All
+      if (typeof archiveNow === 'function') { try { archiveNow(hist); } catch(e) {} }
+      localStorage.setItem(HIST_KEY, '[]'); updateHistBtn(); buildHistoryPage();
     }
   };
   footer.appendChild(clearBtn); body.appendChild(footer);
