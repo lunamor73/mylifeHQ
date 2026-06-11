@@ -3173,4 +3173,41 @@ async function main() {
 
 main();
 </script>
+<!-- ORACULUM_INSIGHTS_GETITEM_FIX -->
+<script>
+(function() {
+  /* Archive V3 used offsetParent to detect the insights page.
+     offsetParent is ALWAYS null for position:fixed elements — it never worked.
+     This wrapper replaces it with the correct check: p6.classList.contains('active'). */
+
+  var _prevGet = Storage.prototype.getItem;
+
+  function onInsightsPage() {
+    var p6 = document.getElementById('p6');
+    return !!(p6 && p6.classList.contains('active'));
+  }
+
+  function mergeForDisplay(history, archive) {
+    var seen = {};
+    return [].concat(history, archive).filter(function(e) {
+      var k = String(e.ts);
+      if (seen[k]) return false;
+      seen[k] = true; return true;
+    }).sort(function(a, b) { return b.ts - a.ts; });
+  }
+
+  Storage.prototype.getItem = function(k) {
+    if (k === 'phq-history' && onInsightsPage()) {
+      try {
+        var h = JSON.parse(_prevGet.call(this, 'phq-history') || '[]');
+        var a = JSON.parse(_prevGet.call(this, 'phq-insight-archive') || '[]');
+        return JSON.stringify(mergeForDisplay(h, a));
+      } catch(e) {}
+    }
+    return _prevGet.call(this, k);
+  };
+
+  console.log('[LUNAMOR] insights getItem fix active (p6.active check)');
+})();
+</script>
 </body>
