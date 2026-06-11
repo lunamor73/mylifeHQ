@@ -3210,4 +3210,27 @@ main();
   console.log('[LUNAMOR] insights getItem fix active (p6.active check)');
 })();
 </script>
+<!-- ORACULUM_OPEN_INSIGHTS_FIX -->
+<script>
+(function() {
+  /* openInsights() calls buildInsights() before p6 gets class 'active',
+     so the merged getItem is bypassed. Re-call buildInsights() after the
+     animation settles (~400ms) when p6.active is guaranteed true. */
+  var _origOpenInsights = window.openInsights;
+  if (typeof _origOpenInsights !== 'function') {
+    console.warn('[LUNAMOR] openInsights not found — timing fix skipped');
+    return;
+  }
+  window.openInsights = function() {
+    _origOpenInsights.apply(this, arguments);
+    setTimeout(function() {
+      var p6 = document.getElementById('p6');
+      if (p6 && p6.classList.contains('active') && typeof buildInsights === 'function') {
+        buildInsights();
+      }
+    }, 400);
+  };
+  console.log('[LUNAMOR] openInsights timing fix active');
+})();
+</script>
 </body>
