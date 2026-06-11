@@ -2989,190 +2989,7 @@ Storage.prototype.getItem = function(k){
 
 
 
-<!-- ORACULUM_FIREBASE_V3_2 -->
-<script type="module">
-import { initializeApp }
-  from 'https://www.gstatic.com/firebasejs/12.14.0/firebase-app.js';
-import { getFirestore, doc, getDoc, setDoc, onSnapshot }
-  from 'https://www.gstatic.com/firebasejs/12.14.0/firebase-firestore.js';
 
-const firebaseConfig = {
-  apiKey:            "AIzaSyDiGQ_ncxfIb1NYbkfPPLnqLhotG8enZbQ",
-  authDomain:        "mylifehq-87330.firebaseapp.com",
-  projectId:         "mylifehq-87330",
-  storageBucket:     "mylifehq-87330.firebasestorage.app",
-  messagingSenderId: "1016552582168",
-  appId:             "1:1016552582168:web:795c105e2645ff8ead676d"
-};
-
-const app = initializeApp(firebaseConfig);
-const db  = getFirestore(app);
-
-const USER_ID   = 'penguin73';
-const SYNC_KEYS = ['phq-history', 'phq-insight-archive'];
-const TOMB_KEY  = 'phq-deleted-ts';
-let _syncing = false;
-let _setItemWrapped = false;
-let _fbOrigSet = null;
-
-/* ── per-key debounced push ──────────────────────────────────────── */
-const _pushTimers = {};
-function pushToCloud(key) {
-  clearTimeout(_pushTimers[key]);
-  _pushTimers[key] = setTimeout(async () => {
-    if (_syncing) return;
-    const raw  = localStorage.getItem(key);
-    const data = raw ? JSON.parse(raw) : [];
-    try { await setDoc(ref(key), { entries: data, updatedAt: Date.now() }); }
-    catch(e) { console.warn('[LUNAMOR sync] write error', key, e.message); }
-  }, 800);
-}
-
-function ref(key) { return doc(db, 'users', USER_ID, 'data', key); }
-
-function localRead(key) {
-  try { return JSON.parse(localStorage.getItem(key) || '[]'); } catch(e) { return []; }
-}
-function localWrite(key, arr) {
-  (_fbOrigSet || Storage.prototype.setItem).call(localStorage, key, JSON.stringify(arr));
-}
-function getTombstones() {
-  try { return new Set(JSON.parse(localStorage.getItem(TOMB_KEY) || '[]')); }
-  catch(e) { return new Set(); }
-}
-function addTombstones(tsArr) {
-  const existing = JSON.parse(localStorage.getItem(TOMB_KEY) || '[]');
-  const merged   = [...new Set([...existing, ...tsArr])];
-  (_fbOrigSet || Storage.prototype.setItem).call(localStorage, TOMB_KEY, JSON.stringify(merged));
-  pushToCloud(TOMB_KEY);
-}
-
-/* Merge two arrays deduped by ts.
-   applyTombstones=true only for phq-history — NEVER for phq-insight-archive. */
-function merge(a, b, applyTombstones) {
-  const dead = applyTombstones ? getTombstones() : new Set();
-  const seen = {};
-  return [...a, ...b].filter(e => {
-    const k = String(e.ts);
-    if (dead.has(k) || seen[k]) return false;
-    seen[k] = true; return true;
-  }).sort((x, y) => y.ts - x.ts);
-}
-
-async function pullFromCloud() {
-  _syncing = true;
-  let changed = false;
-
-  /* Pull tombstones first so merge is aware of deletions */
-  try {
-    const tsnap = await getDoc(ref(TOMB_KEY));
-    if (tsnap.exists()) {
-      const remote = tsnap.data().entries || [];
-      const local  = JSON.parse(localStorage.getItem(TOMB_KEY) || '[]');
-      const united = [...new Set([...remote, ...local])];
-      (_fbOrigSet || Storage.prototype.setItem).call(localStorage, TOMB_KEY, JSON.stringify(united));
-    } else {
-      const local = JSON.parse(localStorage.getItem(TOMB_KEY) || '[]');
-      if (local.length) await setDoc(ref(TOMB_KEY), { entries: local, updatedAt: Date.now() });
-    }
-  } catch(e) { console.warn('[LUNAMOR sync] tombstone pull error', e.message); }
-
-  for (const key of SYNC_KEYS) {
-    try {
-      const snap = await getDoc(ref(key));
-      /* Tombstones only applied to history, NOT archive */
-      const useTombs = (key === 'phq-history');
-      if (snap.exists()) {
-        const merged = merge(snap.data().entries || [], localRead(key), useTombs);
-        localWrite(key, merged);
-        await setDoc(ref(key), { entries: merged, updatedAt: Date.now() });
-        changed = true;
-      } else {
-        const local = localRead(key);
-        if (local.length) await setDoc(ref(key), { entries: local, updatedAt: Date.now() });
-      }
-    } catch(e) { console.warn('[LUNAMOR sync] pull error', key, e.message); }
-  }
-  _syncing = false;
-  if (changed) triggerRerender();
-}
-
-function listenForRemoteChanges() {
-  /* Tombstone listener — when another device deletes, apply here too */
-  onSnapshot(ref(TOMB_KEY), snap => {
-    if (_syncing || !snap.exists()) return;
-    const remote   = snap.data().entries || [];
-    const local    = JSON.parse(localStorage.getItem(TOMB_KEY) || '[]');
-    const localSet = new Set(local);
-    const newOnes  = remote.filter(t => !localSet.has(t));
-    if (!newOnes.length) return;
-    const united = [...new Set([...local, ...remote])];
-    (_fbOrigSet || Storage.prototype.setItem).call(localStorage, TOMB_KEY, JSON.stringify(united));
-    /* Apply new tombstones to history only */
-    const dead     = new Set(united);
-    const h        = localRead('phq-history');
-    const filtered = h.filter(e => !dead.has(String(e.ts)));
-    if (filtered.length < h.length) { localWrite('phq-history', filtered); triggerRerender(); }
-  });
-
-  SYNC_KEYS.forEach(key => {
-    const useTombs = (key === 'phq-history'); /* tombstones never applied to archive */
-    onSnapshot(ref(key), snap => {
-      if (_syncing || !snap.exists()) return;
-      const remote  = snap.data().entries || [];
-      const local   = localRead(key);
-      const dead    = useTombs ? getTombstones() : new Set();
-      const localTs = {};
-      local.forEach(e => localTs[String(e.ts)] = true);
-      const incoming = remote.filter(e => !localTs[String(e.ts)] && !dead.has(String(e.ts)));
-      if (incoming.length) { localWrite(key, merge(local, incoming, useTombs)); triggerRerender(); }
-    });
-  });
-}
-
-function wrapSetItem() {
-  if (_setItemWrapped) return;
-  _setItemWrapped = true;
-  _fbOrigSet = Storage.prototype.setItem;
-  Storage.prototype.setItem = function(k, v) {
-    if (!_syncing && k === 'phq-history') {
-      /* Read BEFORE writing to detect deletions */
-      const prev  = localRead('phq-history');
-      _fbOrigSet.call(this, k, v);              /* write — also triggers Archive V3 */
-      const next    = JSON.parse(v || '[]');
-      const nextTs  = new Set(next.map(e => String(e.ts)));
-      const deleted = prev.filter(e => !nextTs.has(String(e.ts))).map(e => String(e.ts));
-      if (deleted.length) {
-        addTombstones(deleted);
-        /* Archive V3 writes phq-insight-archive directly (bypasses our wrapper).
-           Push it explicitly after a short delay to let Archive V3 finish writing. */
-        setTimeout(() => { try { pushToCloud('phq-insight-archive'); } catch(e) {} }, 300);
-      }
-      pushToCloud('phq-history');
-    } else {
-      _fbOrigSet.call(this, k, v);
-      if (!_syncing && SYNC_KEYS.includes(k)) {
-        try { pushToCloud(k); } catch(e) {}
-      }
-    }
-  };
-}
-
-function triggerRerender() {
-  try { if (typeof updateHistBtn === 'function') updateHistBtn(); } catch(e) {}
-  try { if (typeof buildHistoryPage === 'function') buildHistoryPage(); } catch(e) {}
-  window.dispatchEvent(new StorageEvent('storage', { key: 'phq-history' }));
-}
-
-async function main() {
-  await pullFromCloud();
-  listenForRemoteChanges();
-  wrapSetItem();
-  console.log('[LUNAMOR sync] active — no-auth v3.2 (tombstone history-only)');
-}
-
-main();
-</script>
 <!-- ORACULUM_INSIGHTS_GETITEM_FIX -->
 <script>
 (function() {
@@ -3248,5 +3065,215 @@ main();
     console.log('[LUNAMOR] insights observer active');
   }
 })();
+</script>
+<!-- ORACULUM_FIREBASE_V3_3 -->
+<script type="module">
+import { initializeApp }
+  from 'https://www.gstatic.com/firebasejs/12.14.0/firebase-app.js';
+import { getFirestore, doc, getDoc, setDoc, onSnapshot }
+  from 'https://www.gstatic.com/firebasejs/12.14.0/firebase-firestore.js';
+
+const firebaseConfig = {
+  apiKey:            "AIzaSyDiGQ_ncxfIb1NYbkfPPLnqLhotG8enZbQ",
+  authDomain:        "mylifehq-87330.firebaseapp.com",
+  projectId:         "mylifehq-87330",
+  storageBucket:     "mylifehq-87330.firebasestorage.app",
+  messagingSenderId: "1016552582168",
+  appId:             "1:1016552582168:web:795c105e2645ff8ead676d"
+};
+
+const app = initializeApp(firebaseConfig);
+const db  = getFirestore(app);
+
+const USER_ID   = 'penguin73';
+const HIST_KEY  = 'phq-history';
+const ARCH_KEY  = 'phq-insight-archive';
+const TOMB_KEY  = 'phq-deleted-ts';
+const SYNC_KEYS = [HIST_KEY, ARCH_KEY];
+let _syncing = false;
+let _setItemWrapped = false;
+let _fbOrigSet = null;
+
+const _pushTimers = {};
+function pushToCloud(key) {
+  clearTimeout(_pushTimers[key]);
+  _pushTimers[key] = setTimeout(async () => {
+    if (_syncing) return;
+    const raw  = localStorage.getItem(key);
+    const data = raw ? JSON.parse(raw) : [];
+    try { await setDoc(ref(key), { entries: data, updatedAt: Date.now() }); }
+    catch(e) { console.warn('[LUNAMOR sync] write error', key, e.message); }
+  }, 800);
+}
+
+function ref(key) { return doc(db, 'users', USER_ID, 'data', key); }
+
+function localRead(key) {
+  try { return JSON.parse(localStorage.getItem(key) || '[]'); } catch(e) { return []; }
+}
+function localWrite(key, arr) {
+  (_fbOrigSet || Storage.prototype.setItem).call(localStorage, key, JSON.stringify(arr));
+}
+function getTombstones() {
+  try { return new Set(JSON.parse(localStorage.getItem(TOMB_KEY) || '[]')); }
+  catch(e) { return new Set(); }
+}
+function addTombstones(tsArr) {
+  const existing = JSON.parse(localStorage.getItem(TOMB_KEY) || '[]');
+  const merged   = [...new Set([...existing, ...tsArr])];
+  (_fbOrigSet || Storage.prototype.setItem).call(localStorage, TOMB_KEY, JSON.stringify(merged));
+  pushToCloud(TOMB_KEY);
+}
+
+/* Archive deleted entries directly — V3.3 does this itself, no Archive V3 reliance */
+function archiveNow(removedEntries) {
+  try {
+    const valid = removedEntries.filter(e => e && e.ts != null && e.note);
+    if (!valid.length) return;
+    const raw     = localStorage.getItem(ARCH_KEY);
+    const current = raw ? JSON.parse(raw) : [];
+    const seenTs  = new Set(current.map(e => String(e.ts)));
+    const toAdd   = valid.filter(e => !seenTs.has(String(e.ts)));
+    if (!toAdd.length) return;
+    const merged = [...current, ...toAdd].sort((a, b) => {
+      const at = typeof a.ts === 'number' ? a.ts : Date.parse(String(a.ts));
+      const bt = typeof b.ts === 'number' ? b.ts : Date.parse(String(b.ts));
+      return bt - at;
+    });
+    (_fbOrigSet || Storage.prototype.setItem).call(localStorage, ARCH_KEY, JSON.stringify(merged));
+    console.log('[LUNAMOR sync] archived', toAdd.length, 'entry →', merged.length, 'total');
+  } catch(e) {
+    console.warn('[LUNAMOR sync] archiveNow error', e.message);
+  }
+}
+
+function tsSort(a, b) {
+  const at = typeof a.ts === 'number' ? a.ts : Date.parse(String(a.ts));
+  const bt = typeof b.ts === 'number' ? b.ts : Date.parse(String(b.ts));
+  return bt - at;
+}
+
+function merge(a, b, applyTombstones) {
+  const dead = applyTombstones ? getTombstones() : new Set();
+  const seen = {};
+  return [...a, ...b].filter(e => {
+    const k = String(e.ts);
+    if (dead.has(k) || seen[k]) return false;
+    seen[k] = true; return true;
+  }).sort(tsSort);
+}
+
+async function pullFromCloud() {
+  _syncing = true;
+  let changed = false;
+
+  try {
+    const tsnap = await getDoc(ref(TOMB_KEY));
+    if (tsnap.exists()) {
+      const remote = tsnap.data().entries || [];
+      const local  = JSON.parse(localStorage.getItem(TOMB_KEY) || '[]');
+      const united = [...new Set([...remote, ...local])];
+      (_fbOrigSet || Storage.prototype.setItem).call(localStorage, TOMB_KEY, JSON.stringify(united));
+    } else {
+      const local = JSON.parse(localStorage.getItem(TOMB_KEY) || '[]');
+      if (local.length) await setDoc(ref(TOMB_KEY), { entries: local, updatedAt: Date.now() });
+    }
+  } catch(e) { console.warn('[LUNAMOR sync] tombstone pull error', e.message); }
+
+  for (const key of SYNC_KEYS) {
+    try {
+      const snap = await getDoc(ref(key));
+      const useTombs = (key === HIST_KEY);
+      if (snap.exists()) {
+        const remote = snap.data().entries || [];
+        const local  = localRead(key);
+        const merged = merge(remote, local, useTombs);
+        localWrite(key, merged);
+        await setDoc(ref(key), { entries: merged, updatedAt: Date.now() });
+        changed = true;
+      } else {
+        const local = localRead(key);
+        if (local.length) await setDoc(ref(key), { entries: local, updatedAt: Date.now() });
+      }
+    } catch(e) { console.warn('[LUNAMOR sync] pull error', key, e.message); }
+  }
+  _syncing = false;
+  if (changed) triggerRerender();
+}
+
+function listenForRemoteChanges() {
+  onSnapshot(ref(TOMB_KEY), snap => {
+    if (_syncing || !snap.exists()) return;
+    const remote   = snap.data().entries || [];
+    const local    = JSON.parse(localStorage.getItem(TOMB_KEY) || '[]');
+    const localSet = new Set(local);
+    const newOnes  = remote.filter(t => !localSet.has(t));
+    if (!newOnes.length) return;
+    const united = [...new Set([...local, ...remote])];
+    (_fbOrigSet || Storage.prototype.setItem).call(localStorage, TOMB_KEY, JSON.stringify(united));
+    const dead     = new Set(united);
+    const h        = localRead(HIST_KEY);
+    const filtered = h.filter(e => !dead.has(String(e.ts)));
+    if (filtered.length < h.length) { localWrite(HIST_KEY, filtered); triggerRerender(); }
+  });
+
+  SYNC_KEYS.forEach(key => {
+    const useTombs = (key === HIST_KEY);
+    onSnapshot(ref(key), snap => {
+      if (_syncing || !snap.exists()) return;
+      const remote  = snap.data().entries || [];
+      const local   = localRead(key);
+      const dead    = useTombs ? getTombstones() : new Set();
+      const localTs = new Set(local.map(e => String(e.ts)));
+      const incoming = remote.filter(e => !localTs.has(String(e.ts)) && !dead.has(String(e.ts)));
+      if (incoming.length) { localWrite(key, merge(local, incoming, useTombs)); triggerRerender(); }
+    });
+  });
+}
+
+function wrapSetItem() {
+  if (_setItemWrapped) return;
+  _setItemWrapped = true;
+  _fbOrigSet = Storage.prototype.setItem;
+  Storage.prototype.setItem = function(k, v) {
+    if (!_syncing && k === HIST_KEY) {
+      const prev   = localRead(HIST_KEY);
+      const next   = (() => { try { return JSON.parse(v || '[]'); } catch(e) { return []; } })();
+      const nextTs = new Set(next.map(e => String(e.ts)));
+      const removed = prev.filter(e => !nextTs.has(String(e.ts)));
+
+      /* Archive BEFORE writing — V3.3 owns archiving, Archive V3 is a fallback */
+      if (removed.length) archiveNow(removed);
+
+      _fbOrigSet.call(this, k, v);
+
+      if (removed.length) {
+        addTombstones(removed.map(e => String(e.ts)));
+        pushToCloud(ARCH_KEY);
+      }
+      pushToCloud(HIST_KEY);
+    } else {
+      _fbOrigSet.call(this, k, v);
+      if (!_syncing && SYNC_KEYS.includes(k)) {
+        try { pushToCloud(k); } catch(e) {}
+      }
+    }
+  };
+}
+
+function triggerRerender() {
+  try { if (typeof updateHistBtn    === 'function') updateHistBtn(); }    catch(e) {}
+  try { if (typeof buildHistoryPage === 'function') buildHistoryPage(); } catch(e) {}
+  window.dispatchEvent(new StorageEvent('storage', { key: HIST_KEY }));
+}
+
+async function main() {
+  await pullFromCloud();
+  listenForRemoteChanges();
+  wrapSetItem();
+  console.log('[LUNAMOR sync] active — v3.3 (direct archive in setItem)');
+}
+
+main();
 </script>
 </body>
