@@ -3005,12 +3005,23 @@ Storage.prototype.getItem = function(k){
   }
 
   function mergeForDisplay(history, archive) {
+    /* Normalize each entry: convert numeric ts → ISO string, drop sentinels/nulls */
+    function normalize(e) {
+      if (!e || e.ts == null || e.ts === 9999999999999) return null;
+      var ts = typeof e.ts === 'number' ? new Date(e.ts).toISOString() : String(e.ts);
+      if (!ts || ts === 'undefined' || ts === 'null' || ts === 'NaN') return null;
+      return Object.assign({}, e, { ts: ts });
+    }
     var seen = {};
-    return [].concat(history, archive).filter(function(e) {
-      var k = String(e.ts);
-      if (seen[k]) return false;
-      seen[k] = true; return true;
-    }).sort(function(a, b) { return b.ts - a.ts; });
+    return [].concat(history, archive)
+      .map(normalize)
+      .filter(function(e) {
+        if (!e) return false;
+        if (seen[e.ts]) return false;
+        seen[e.ts] = true;
+        return true;
+      })
+      .sort(function(a, b) { return new Date(b.ts) - new Date(a.ts); });
   }
 
   Storage.prototype.getItem = function(k) {
@@ -3126,12 +3137,24 @@ function addTombstones(tsArr) {
 }
 
 /* Archive deleted entries directly — V3.3 does this itself, no Archive V3 reliance */
+function normTs(e) {
+  /* Normalize ts to ISO string so buildInsights can call .slice() on it */
+  if (!e || e.ts == null || e.ts === 9999999999999) return null;
+  const ts = typeof e.ts === 'number' ? new Date(e.ts).toISOString() : String(e.ts);
+  if (!ts || ts === 'undefined' || ts === 'null' || ts === 'NaN') return null;
+  return Object.assign({}, e, { ts });
+}
+
 function archiveNow(removedEntries) {
   try {
-    const valid = removedEntries.filter(e => e && e.ts != null && e.note);
+    const valid = removedEntries
+      .map(normTs)
+      .filter(e => e && e.note);
     if (!valid.length) return;
     const raw     = localStorage.getItem(ARCH_KEY);
-    const current = raw ? JSON.parse(raw) : [];
+    const existing = raw ? JSON.parse(raw) : [];
+    /* Also normalize existing archive entries to clean up any legacy junk */
+    const current = existing.map(normTs).filter(Boolean);
     const seenTs  = new Set(current.map(e => String(e.ts)));
     const toAdd   = valid.filter(e => !seenTs.has(String(e.ts)));
     if (!toAdd.length) return;
