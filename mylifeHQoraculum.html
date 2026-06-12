@@ -1264,6 +1264,7 @@ function generatePrompt() {
   pbox.textContent = txt; pbox.classList.add('show');
   pbox.scrollIntoView({ behavior:'smooth', block:'nearest' });
   buildRelated();
+  saveCheckIn(txt); showConf('✓ Check-in saved'); // v3.7: generate saves — copy is no longer the only save trigger
   return txt;
 }
 
@@ -1335,8 +1336,9 @@ function copyPrompt() {
   }
 }
 
-function showConf() {
-  const c = document.getElementById('conf'); c.classList.add('show');
+function showConf(msg) {
+  const c = document.getElementById('conf'); c.textContent = msg || '✓ Copied to clipboard';
+  c.classList.add('show');
   setTimeout(() => c.classList.remove('show'), 2500);
 }
 
@@ -1344,7 +1346,7 @@ function showConf() {
 function resetAll() {
   S.domain = null; S.lunadom = null; S.items = new Set();
   S.lynStatus = null; S.zpd = null; S.direction = null; S.exchange = null;
-  S.timePads = new Set(); S.note = ''; S.saved = false;
+  S.timePads = new Set(); S.note = ''; S.saved = false; S.savedId = null;
   nav('p1');
 }
 
@@ -1356,7 +1358,6 @@ function getHistory() {
 }
 
 function saveCheckIn(promptText) {
-  if (S.saved) return; S.saved = true;
   const entry = {
     id: Date.now(), ts: new Date().toISOString(),
     domain: S.domain, lunadom: S.lunadom,
@@ -1365,6 +1366,18 @@ function saveCheckIn(promptText) {
     timeMins: totalMins(), note: S.note, prompt: promptText
   };
   const hist = getHistory();
+  // v3.7: regenerating after a save updates the existing entry instead of duplicating
+  if (S.saved && S.savedId) {
+    const i = hist.findIndex(e => e && e.id === S.savedId);
+    if (i > -1) {
+      entry.id = S.savedId;
+      hist[i] = entry;
+      localStorage.setItem(HIST_KEY, JSON.stringify(hist));
+      updateHistBtn();
+      return;
+    }
+  }
+  S.saved = true; S.savedId = entry.id;
   hist.unshift(entry);
   if (hist.length > 100) hist.length = 100;
   localStorage.setItem(HIST_KEY, JSON.stringify(hist));
