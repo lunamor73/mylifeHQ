@@ -1735,7 +1735,9 @@ function getMoonPhase() {
   else if (phaseDays < 22.15) name = 'Waning Gibbous';
   else if (phaseDays < 23.99) name = 'Last Quarter';
   else                        name = 'Waning Crescent';
-  return { name, illum, phaseDays };
+  const emoji = { 'New Moon':'🌑','Waxing Crescent':'🌒','First Quarter':'🌓','Waxing Gibbous':'🌔',
+                  'Full Moon':'🌕','Waning Gibbous':'🌖','Last Quarter':'🌗','Waning Crescent':'🌘' }[name];
+  return { name, illum, phaseDays, emoji }; // v3.8: emoji was missing — caused "undefined" in tides header
 }
 
 // ─── SEPIA MOON SVG ───
@@ -1917,6 +1919,7 @@ function parseTideState(extremes) {
   const nextHrs  = nextMins >= 60 ? `${Math.floor(nextMins/60)}h ${nextMins%60}m` : `${nextMins}m`;
   return {
     rising,
+    id: rising ? 'filling-up' : 'pouring-out', // v3.8: id was missing — tide SVG always fell back to high-tide
     label: rising ? 'Rising' : 'Falling',
     emoji: rising ? '↑' : '↓',
     pct,
@@ -1926,21 +1929,39 @@ function parseTideState(extremes) {
   };
 }
 
-// ─── FETCH TIDES (cached 1h) ───
+// ─── FETCH TIDES (quota-aware cache, v3.8) ───
+// Stormglass free tier has a small daily quota. Strategy:
+//  1. Serve the cache for as long as it still contains a future tide extreme (no API call).
+//  2. Fetch a wide window (+32h) so one successful call covers a full day or more.
+//  3. Never overwrite good cache with an empty/quota-error payload.
+//  4. After a failed call, don't retry until the next calendar day.
 async function fetchTides(lat, lng) {
   const cacheKey = 'phq-tide-cache';
-  const cached = JSON.parse(localStorage.getItem(cacheKey) || 'null');
-  if (cached && Date.now() - cached.ts < 3600000) return cached.data;
+  const failKey  = 'phq-tide-fail-date';
+  let cached = null;
+  try { cached = JSON.parse(localStorage.getItem(cacheKey) || 'null'); } catch(e) {}
+  const hasFuture = c => c && Array.isArray(c.data) && c.data.some(x => new Date(x.time) > Date.now());
+  if (hasFuture(cached)) return cached.data;
+  const today = new Date().toDateString();
+  if (localStorage.getItem(failKey) === today) return cached ? cached.data : null;
   const start = new Date(Date.now() - 8*3600000).toISOString();
-  const end   = new Date(Date.now() + 16*3600000).toISOString();
+  const end   = new Date(Date.now() + 32*3600000).toISOString();
   const url   = `https://api.stormglass.io/v2/tide/extremes/point?lat=${lat}&lng=${lng}&start=${start}&end=${end}`;
   try {
     const resp = await fetch(url, { headers: { Authorization: STORM_KEY } });
     const json = await resp.json();
-    const data = json.data || [];
-    localStorage.setItem(cacheKey, JSON.stringify({ ts: Date.now(), data }));
-    return data;
-  } catch(e) { return null; }
+    const data = json.data;
+    if (Array.isArray(data) && data.length) {
+      localStorage.setItem(cacheKey, JSON.stringify({ ts: Date.now(), data }));
+      localStorage.removeItem(failKey);
+      return data;
+    }
+    localStorage.setItem(failKey, today);   // quota exceeded or empty — keep old cache, stop calling for today
+    return cached ? cached.data : null;
+  } catch(e) {
+    localStorage.setItem(failKey, today);
+    return cached ? cached.data : null;
+  }
 }
 
 // ─── UPDATE UI ───
