@@ -1799,18 +1799,7 @@ function tideSVG(state, size) {
     `<path d="${wavePath(cfg.amps[2], baseY + spacing)}" fill="none" stroke="${col3}" stroke-width="1.4" stroke-linecap="round"/>`,
   ].join('');
 
-  let arrow = '';
-  if (cfg.arrow === 'down') {
-    const ax = w * 0.82, ay = cy;
-    arrow = `<line x1="${ax}" y1="${ay-6}" x2="${ax}" y2="${ay+6}" stroke="#3a3530" stroke-width="2" stroke-linecap="round"/>
-    <polyline points="${ax-3},${ay+2} ${ax},${ay+6} ${ax+3},${ay+2}" fill="none" stroke="#3a3530" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>`;
-  } else if (cfg.arrow === 'up') {
-    const ax = w * 0.82, ay = cy;
-    arrow = `<line x1="${ax}" y1="${ay+6}" x2="${ax}" y2="${ay-6}" stroke="#3a3530" stroke-width="2" stroke-linecap="round"/>
-    <polyline points="${ax-3},${ay-2} ${ax},${ay-6} ${ax+3},${ay-2}" fill="none" stroke="#3a3530" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>`;
-  }
-
-  return `<svg width="${w}" height="${h}" viewBox="0 0 ${w} ${h}">${waves}${arrow}</svg>`;
+  return `<svg width="${w}" height="${h}" viewBox="0 0 ${w} ${h}">${waves}</svg>`;
 }
 
 function getMoonElevation(lat, lon) {
@@ -2002,7 +1991,8 @@ function updateTideMoonUI(tideState, moon) {
   if (moonLbl) moonLbl.textContent = `${moon.name} ${moon.illum}%`;
   if (tideState) {
     if (tideEm)  tideEm.innerHTML   = tideSVG(tideState.id, 44);
-    if (tideLbl) tideLbl.textContent = `${tideState.label} · ${tideState.nextType} in ${tideState.nextHrs}`;
+    const _dir = tideState.id === 'pouring-out' ? '↓ ' : tideState.id === 'filling-up' ? '↑ ' : '';
+    if (tideLbl) tideLbl.textContent = `${_dir}${tideState.nextType} in ${tideState.nextHrs}`;
   } else {
     if (tideEm)  tideEm.innerHTML   = tideSVG('low-tide', 44);
     if (tideLbl) tideLbl.textContent = 'Tide unavailable';
