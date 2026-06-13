@@ -41,17 +41,17 @@
     .page {
       position: fixed; inset: 0;
       display: flex; flex-direction: column; align-items: center;
-      overflow-y: scroll; scrollbar-width: none; -ms-overflow-style: none;
+      overflow-y: scroll; overflow-x: hidden; scrollbar-width: none; -ms-overflow-style: none;
       opacity: 0; pointer-events: none;
       transform: translateX(40px);
       transition: opacity 0.22s ease, transform 0.22s ease;
     }
     .page.active { opacity: 1; pointer-events: all; transform: translateX(0); }
-    @media (min-width: 600px) {
+    @media (min-width: 640px) {
       .page {
         left: 50%; right: auto;
-        width: 480px;
-        margin-left: -240px;
+        width: 600px;
+        margin-left: -300px;
         overflow-x: hidden;
         box-shadow: 0 0 60px rgba(0,0,0,0.06);
       }
@@ -190,10 +190,10 @@
     .d-tile-name { font-size: 16px; font-weight: 600; letter-spacing: 0.5px; }
 
     /* ══ PAGE 3L: LUNA DOMAINS — 3×3 ICON GRID ══ */
-    #p3l { align-items: stretch; }
+    #p3l { align-items: center; }
     .luna-grid {
       padding: 20px;
-      width: 100%;
+      width: 100%; max-width: 480px; margin: 0 auto;
       display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px;
       box-sizing: border-box;
     }
