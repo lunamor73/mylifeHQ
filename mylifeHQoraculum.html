@@ -1323,18 +1323,30 @@ function buildRelated() {
   panel.classList.add('show');
 }
 
+// ─── CLIPBOARD HELPER (v3.10) ───
+// Always uses textarea execCommand first (synchronous, bypasses navigator.clipboard overrides),
+// then async clipboard API on top. Prevents stale clipboard content if clipboard API was
+// intercepted by a dev tool or external script.
+function safeWriteClipboard(txt, callback) {
+  const ta = document.createElement('textarea');
+  ta.value = txt;
+  ta.style.cssText = 'position:fixed;opacity:0;top:0;left:0;pointer-events:none;';
+  document.body.appendChild(ta);
+  ta.focus(); ta.select();
+  try { document.execCommand('copy'); } catch(e) {}
+  document.body.removeChild(ta);
+  if (navigator.clipboard && typeof navigator.clipboard.writeText === 'function') {
+    navigator.clipboard.writeText(txt).catch(() => {});
+  }
+  if (callback) callback();
+}
+
 // ─── COPY ───
 function copyPrompt() {
   const pbox = document.getElementById('pbox');
   if (!pbox.classList.contains('show')) generatePrompt();
   const txt = pbox.textContent;
-  if (navigator.clipboard) {
-    navigator.clipboard.writeText(txt).then(() => { showConf(); saveCheckIn(txt); });
-  } else {
-    const ta = mk('textarea'); ta.value = txt; document.body.appendChild(ta);
-    ta.select(); document.execCommand('copy'); document.body.removeChild(ta);
-    showConf(); saveCheckIn(txt);
-  }
+  safeWriteClipboard(txt, () => { showConf(); saveCheckIn(txt); }); // v3.10
 }
 
 function showConf(msg) {
@@ -1442,8 +1454,7 @@ function buildHistoryPage() {
       e.stopPropagation();
       const txt = entry.prompt || '';
       const done = () => { copyBtn.textContent = '✓ Copied'; setTimeout(() => { copyBtn.textContent = '📋 Copy prompt'; }, 2000); };
-      if (navigator.clipboard) navigator.clipboard.writeText(txt).then(done);
-      else { const ta = mk('textarea'); ta.value = txt; document.body.appendChild(ta); ta.select(); document.execCommand('copy'); document.body.removeChild(ta); done(); }
+      safeWriteClipboard(txt, done); // v3.10
     };
     exp.appendChild(promptTxt); exp.appendChild(copyBtn);
     const inner = mk('div'); inner.className = 'hist-inner';
@@ -2099,16 +2110,7 @@ function generateOraclePrompt() {
   lines.push('Based on all oracle data and the check-ins above: how is my life looking right now? Cross-reference all systems. Use dot points with domain headers. Flag what is alive, what needs attention, and any patterns you see across the check-in data.');
 
   const txt = lines.join('\n');
-
-  // Copy to clipboard
-  if (navigator.clipboard) {
-    navigator.clipboard.writeText(txt).then(() => showOracleToast());
-  } else {
-    const ta = document.createElement('textarea');
-    ta.value = txt; document.body.appendChild(ta); ta.select();
-    document.execCommand('copy'); document.body.removeChild(ta);
-    showOracleToast();
-  }
+  safeWriteClipboard(txt, showOracleToast); // v3.10
 }
 
 
@@ -2156,14 +2158,7 @@ function generateWeeklyPrompt() {
   lines.push('Weekly oracle synthesis: Looking across all 7 days of check-ins, what are the dominant patterns? Which domains got attention, which were neglected? What does the arc of the week reveal about where I am right now? Cross-reference oracle systems. Flag what is alive, what is asking to be seen, and one key thing to carry into next week.');
 
   const txt = lines.join('\n');
-  if (navigator.clipboard) {
-    navigator.clipboard.writeText(txt).then(() => showOracleToast());
-  } else {
-    const ta = document.createElement('textarea');
-    ta.value = txt; document.body.appendChild(ta); ta.select();
-    document.execCommand('copy'); document.body.removeChild(ta);
-    showOracleToast();
-  }
+  safeWriteClipboard(txt, showOracleToast); // v3.10
 }
 
 
@@ -2262,14 +2257,7 @@ function generatePenguinHQPrompt() {
   lines.push('- One concrete thing to rebalance this week.');
 
   const txt = lines.join('\n');
-  if (navigator.clipboard) {
-    navigator.clipboard.writeText(txt).then(() => showOracleToast());
-  } else {
-    const ta = document.createElement('textarea');
-    ta.value = txt; document.body.appendChild(ta); ta.select();
-    document.execCommand('copy'); document.body.removeChild(ta);
-    showOracleToast();
-  }
+  safeWriteClipboard(txt, showOracleToast); // v3.10
 }
 
 function showOracleToast() {
@@ -2413,12 +2401,10 @@ function mundusCopy() {
   lines.push('', '---', 'Mundus daily log. Ready for Claude.');
 
   const txt = lines.join('\n');
-  if (navigator.clipboard) {
-    navigator.clipboard.writeText(txt).then(() => {
-      document.getElementById('mundus-conf').textContent = '✓ Copied — paste into Claude';
-      setTimeout(() => { document.getElementById('mundus-conf').textContent = ''; }, 3000);
-    });
-  }
+  safeWriteClipboard(txt, () => { // v3.10
+    document.getElementById('mundus-conf').textContent = '✓ Copied — paste into Claude';
+    setTimeout(() => { document.getElementById('mundus-conf').textContent = ''; }, 3000);
+  });
 }
 
 </script>
