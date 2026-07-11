@@ -3111,9 +3111,11 @@ import { initializeApp }
   from 'https://www.gstatic.com/firebasejs/12.14.0/firebase-app.js';
 import { getFirestore, doc, getDoc, setDoc, onSnapshot }
   from 'https://www.gstatic.com/firebasejs/12.14.0/firebase-firestore.js';
+import { getAuth, signInAnonymously, onAuthStateChanged }
+  from 'https://www.gstatic.com/firebasejs/12.14.0/firebase-auth.js';
 
 const firebaseConfig = {
-  apiKey:            "AIzaSyDiGQ_ncxfIb1NYbkfPPLnqLhotG8enZbQ",
+  apiKey:            "AIzaSyALxb2Cf4vL-DUDI0q21tiQ5-i4HmvTjVM",
   authDomain:        "mylifehq-87330.firebaseapp.com",
   projectId:         "mylifehq-87330",
   storageBucket:     "mylifehq-87330.firebasestorage.app",
@@ -3121,8 +3123,21 @@ const firebaseConfig = {
   appId:             "1:1016552582168:web:795c105e2645ff8ead676d"
 };
 
-const app = initializeApp(firebaseConfig);
-const db  = getFirestore(app);
+const app  = initializeApp(firebaseConfig);
+const db   = getFirestore(app);
+const auth = getAuth(app);
+
+function waitForAuth() {
+  return new Promise((resolve, reject) => {
+    onAuthStateChanged(auth, user => {
+      if (user) { resolve(user); return; }
+      signInAnonymously(auth).catch(e => {
+        console.warn('[LUNAMOR sync] anonymous sign-in error', e.message);
+        reject(e);
+      });
+    });
+  });
+}
 
 const USER_ID   = 'penguin73';
 const HIST_KEY  = 'phq-history';
@@ -3319,10 +3334,12 @@ function triggerRerender() {
 }
 
 async function main() {
+  try { await waitForAuth(); }
+  catch(e) { console.warn('[LUNAMOR sync] disabled — no auth session'); return; }
   await pullFromCloud();
   listenForRemoteChanges();
   wrapSetItem();
-  console.log('[LUNAMOR sync] active — v3.3 (direct archive in setItem)');
+  console.log('[LUNAMOR sync] active — v3.4 (anonymous auth + direct archive in setItem)');
 }
 
 main();
