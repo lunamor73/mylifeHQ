@@ -605,6 +605,7 @@
   </div>
   <div class="p1-btn-row">
     <button class="p1-oracle" onclick="generateOraclePrompt()">Oraculum</button>
+    <button class="p1-season" onclick="openSeasonReview()" id="p1-season-btn">Season Review</button>
   </div>
   <div class="oracle-toast" id="oracle-toast">Prompt copied — paste into Claude ✓</div>
 </div>
@@ -2448,6 +2449,52 @@ function mundusCopy() {
   </div>
 </div>
 
+<!-- == P8: SEASON REVIEW == -->
+<style>
+.p1-season{width:200px;padding:10px 28px;border-radius:12px;border:1.5px solid var(--muted);background:transparent;color:var(--muted);font-size:11px;font-weight:600;letter-spacing:1.5px;cursor:pointer;display:block;text-transform:uppercase;transition:all 0.15s}
+.p1-season:active{border-color:var(--gold);color:var(--gold)}
+.sr-body{padding:20px 24px 120px;overflow-y:auto;height:calc(100% - 56px)}
+.sr-country{font-size:11px;color:var(--muted);letter-spacing:0.5px;margin-bottom:12px}
+.sr-desc{font-size:14px;color:var(--fg);line-height:1.6;margin-bottom:10px}
+.sr-call{font-size:14px;color:var(--gold);font-style:italic;margin-bottom:20px;line-height:1.5}
+.sr-month-label{font-size:13px;color:var(--muted);margin-bottom:20px;padding-bottom:16px;border-bottom:1px solid rgba(255,255,255,0.08)}
+.sr-section-label{font-size:10px;letter-spacing:2px;text-transform:uppercase;color:var(--muted);margin:16px 0 8px}
+.sr-row{display:flex;align-items:center;gap:8px;margin-bottom:8px}
+.sr-label{font-size:13px;color:var(--fg);min-width:130px;flex-shrink:0}
+.sr-count{font-size:12px;color:var(--muted);min-width:20px;text-align:right;flex-shrink:0}
+.sr-bar-wrap{flex:1;height:4px;background:rgba(255,255,255,0.08);border-radius:2px;overflow:hidden}
+.sr-bar-fill{height:100%;border-radius:2px;transition:width 0.3s ease}
+.sr-empty{font-size:13px;color:var(--muted);padding:8px 0}
+.sr-total{margin-top:20px;font-size:12px;color:var(--muted);padding-top:16px;border-top:1px solid rgba(255,255,255,0.08)}
+.sr-oracle-btn{margin-top:28px;width:100%;padding:14px;border-radius:12px;border:1.5px solid var(--gold);background:var(--gold-dim);color:var(--gold);font-size:13px;font-weight:700;letter-spacing:2px;text-transform:uppercase;cursor:pointer;transition:background 0.15s}
+.sr-oracle-btn:active{background:var(--gold);color:#fff}
+.sr-toast{margin-top:12px;text-align:center;font-size:12px;color:var(--muted);opacity:0;transition:opacity 0.3s}
+</style>
+<div id="p8" class="page">
+  <div class="top-bar">
+    <button class="back-btn" onclick="nav('p1')">&#8592; Back</button>
+    <div class="bar-title" id="sr-season-name"></div>
+    <div style="width:60px"></div>
+  </div>
+  <div class="sr-body">
+    <div class="sr-country" id="sr-country"></div>
+    <div class="sr-desc" id="sr-desc"></div>
+    <div class="sr-call" id="sr-call"></div>
+    <div class="sr-month-label" id="sr-month-label"></div>
+    <div class="sr-section-label">Domain Activity</div>
+    <div id="sr-domains"></div>
+    <div class="sr-section-label">Zone Distribution</div>
+    <div id="sr-zones"></div>
+    <div class="sr-section-label">Feeling Tides</div>
+    <div id="sr-tides"></div>
+    <div class="sr-section-label">Exchange</div>
+    <div id="sr-exchange"></div>
+    <div class="sr-total" id="sr-total"></div>
+    <button class="sr-oracle-btn" onclick="generateSeasonOracle()">Generate Season Oracle</button>
+    <div class="sr-toast" id="sr-toast"></div>
+  </div>
+</div>
+
 
 <script>
 // ── Service Worker: keeps saved PWA (iPhone / desktop) up to date ──────────
@@ -3344,4 +3391,219 @@ async function main() {
 
 main();
 </script>
+<script>
+// == SEASON REVIEW v1.0 ==
+// Seasonal framework: Bandjalang (Bundjalung Country) — Northern NSW to SE QLD corridor
+// Source: Minyumai Land Holding Aboriginal Corporation, Bandjalang Cultural Calendar (2021)
+// Kabi Kabi / Gubbi Gubbi names pending — update SEASONS when confirmed with Gubbi Gubbi Dyungungoo Group
+
+var SEASONS = [
+  { key:'ngoon', name:'Ngoon', language:'Bandjalang · Bundjalung Country', months:[0,1,10,11],
+    character:'Hot, wet, abundant. Native raspberry fruiting. Goanna active and feeding. Wallaby in summer sun. Pipis in season. Energy is outward and generative.',
+    call:'What is ripening? What is ready to be harvested before the heat peaks?',
+    chartNote:'Cancer Sun season — memory, home, and nurture are amplified. Emotional tide is high. Seeds become visible.' },
+  { key:'bithungwurring', name:'Bithungwurring', language:'Bandjalang · Bundjalung Country', months:[2,3,4],
+    character:'Cooling, slowing, consolidating. Baby wallaby growing fur. Goanna seeking last feeds before stillness. Mussels. Hoop vine spiritual tree.',
+    call:'What is completing? What needs to be released before the cold?',
+    chartNote:'Capricorn Rising energy — structure, pruning, commitment. Mars in Aries still has fire but the ground is cooling.' },
+  { key:'wurring', name:'Wurring', language:'Bandjalang · Bundjalung Country', months:[5,6],
+    character:'Cold, still, quiet. Goanna in deep rest. Young wallaby emerges from the pouch into a still world. Kookaburra nesting. Wattle beginning to flower.',
+    call:'What is gestating in the dark? What does the quiet reveal?',
+    chartNote:'Sagittarius Moon in the dark season — the philosopher rests. Neptune Sag dreaming. 12th house wisdom rising.' },
+  { key:'bithungngoon', name:'Bithungngoon', language:'Bandjalang · Bundjalung Country', months:[7,8,9],
+    character:'Warming, stirring, preparing. Wattle in full flower. Goanna mating. Garnia seeds ready to grind. Sandpaper fig fruiting. Yellow-tailed black cockatoo moving.',
+    call:'What is stirring? What needs to be prepared for the growth ahead?',
+    chartNote:'Leo Mercury and Venus warming — voice and creativity emerge. The 5/2 Heretic starts to be called upon.' },
+];
+
+
+
+function srSeason() {
+  var m = new Date().getMonth();
+  return SEASONS.find(function(s){ return s.months.indexOf(m) > -1; }) || SEASONS[0];
+}
+function srEntries(year, month) {
+  var hist=[], arch=[];
+  try{ hist = JSON.parse(localStorage.getItem('phq-history')||'[]'); }catch(e){}
+  try{ arch = JSON.parse(localStorage.getItem('phq-insight-archive')||'[]'); }catch(e){}
+  var seen = {};
+  return [].concat(hist, arch).filter(function(e){
+    if(!e||!e.ts) return false;
+    var ts = typeof e.ts==='number' ? (e.ts===9999999999999?null:new Date(e.ts).toISOString()) : String(e.ts);
+    if(!ts||ts==='null'||ts==='undefined') return false;
+    var d = new Date(ts);
+    if(isNaN(d.getTime())) return false;
+    if(d.getFullYear()!==year || d.getMonth()!==month) return false;
+    var k = String(e.id||e.ts);
+    if(seen[k]) return false;
+    seen[k]=1; return true;
+  });
+}
+function srCount(arr, field) {
+  var c={};
+  arr.forEach(function(e){ var v=e[field]||'—'; c[v]=(c[v]||0)+1; });
+  return Object.entries(c).sort(function(a,b){ return b[1]-a[1]; });
+}
+function srBar(v, mx, col) {
+  var p = mx>0 ? Math.round(v/mx*100) : 0;
+  return '<div class="sr-bar-wrap"><div class="sr-bar-fill" style="width:'+p+'%;background:'+col+'"></div></div>';
+}
+function srRows(elId, counts, defColor, colorMap) {
+  var mx = counts[0]?counts[0][1]:1;
+  document.getElementById(elId).innerHTML = counts.map(function(p){
+    var c = colorMap?(colorMap[p[0]]||defColor):defColor;
+    return '<div class="sr-row"><span class="sr-label">'+p[0]+'</span><span class="sr-count">'+p[1]+'</span>'+srBar(p[1],mx,c)+'</div>';
+  }).join('');
+}
+function openSeasonReview(){ buildSeasonReview(); nav('p8'); }
+function buildSeasonReview(){
+  var now=new Date(), yr=now.getFullYear(), mo=now.getMonth();
+  var s=srSeason(), entries=srEntries(yr,mo);
+  var mn=now.toLocaleString('default',{month:'long'});
+  document.getElementById('sr-season-name').textContent=s.name;
+  document.getElementById('sr-country').textContent=s.language;
+  document.getElementById('sr-desc').textContent=s.character;
+  document.getElementById('sr-call').textContent='↬ '+s.call;
+  document.getElementById('sr-month-label').textContent=mn+' '+yr+' · '+entries.length+' check-in'+(entries.length!==1?'s':'');
+  var homeBtn=document.getElementById('p1-season-btn');
+  if(homeBtn) homeBtn.textContent=s.name;
+  if(!entries.length){
+    ['sr-domains','sr-zones','sr-tides','sr-exchange'].forEach(function(id){
+      document.getElementById(id).innerHTML='<div class="sr-empty">No entries this month yet</div>';
+    });
+    document.getElementById('sr-total').textContent=''; return;
+  }
+  var zc={'Cruising':'#88aaff','Stretching':'#ffcc44','In Flow':'#44ddaa','Overload':'#ff6655','Underload':'#aaaaaa'};
+  srRows('sr-domains',srCount(entries,'lunadom'),'var(--gold)',null);
+  srRows('sr-zones',  srCount(entries,'zpd'),    'var(--gold)',zc);
+  srRows('sr-tides',  srCount(entries,'direction'),'#8899cc',null);
+  srRows('sr-exchange',srCount(entries,'exchange'),'#99bb88',null);
+  var tm=entries.reduce(function(a,e){return a+(e.timeMins||0);},0);
+  document.getElementById('sr-total').textContent='Total logged time: '+(tm>=60?Math.floor(tm/60)+'h ':'')+tm%60+'m';
+}
+function generateSeasonOracle(){
+  var now=new Date(), yr=now.getFullYear(), mo=now.getMonth();
+  var s=srSeason(), entries=srEntries(yr,mo);
+  var mn=now.toLocaleString('default',{month:'long'});
+  var tm=entries.reduce(function(a,e){return a+(e.timeMins||0);},0);
+
+  // ── Full Penguin HQ star map ───────────────────────────────────────────────
+  // 4 domains → 12 sub-domains → 30 sections → 97 items
+  var STAR_MAP = [
+    { domain:'LUNAMOR', key:'lunava',   label:'LUNAVĀ',   section:'Creative Practice',
+      items:['SlapDanceSing','Sticking','Low Boy','Booty Shaker','MIDI Mat','Ethno Jazz','Writing','Clown Secret','Strumming','Case Unknown','Rehearsal','Recording a session','Arrangement & production'] },
+    { domain:'LUNAMOR', key:'lunawan',  label:'LUNAWĀN',  section:'Audio · Creative Mentoring · R&D',
+      items:['Signal chain / UAD','Live rig setup','Lowboy set','I.S.A.A.C. — Ira Seidenstein','Level Up Club — Francesca','Life Coaching','Research & study','Reading','Podcast & listening','Prototyping'] },
+    { domain:'LUNAMOR', key:'lunatir',  label:'LUNATIR',  section:'Community & Field',
+      items:['Gigs & performances','Workshops & teaching','Community events','Collaborations','Open mic / jam session','Festival & event prep'] },
+    { domain:'LUNAMOR', key:'lunaama',  label:'LUNAAMA',  section:'Admin & Operations',
+      items:['Scheduling & calendar','Contracts & agreements','Logistics & operations','Email triage','Systems & tools setup','Filing & records'] },
+    { domain:'LUNAMOR', key:'lunalume', label:'LUNALUME', section:'Comms & Voice',
+      items:['Email & correspondence','Social media','Press & media','Newsletter & blog','Website & bio'] },
+    { domain:'LUNAMOR', key:'lunacai',  label:'LUNACÁI',  section:'Finance',
+      items:['Invoicing','Expenses','Tax & accounting','Budget review','Grant & funding research'] },
+    { domain:'LUNAMOR', key:'lunafam',  label:'LUNAFAM',  section:'People & Network',
+      items:['Team & collaborators','Network & contacts','Community relationships','Mentor check-in','Start Ups','Follow-up & nurture'] },
+    { domain:'LUNAMOR', key:'lunadan',  label:'LUNADÁN',  section:'Vision & Strategy',
+      items:['Goals & targets','Planning & roadmap','Key decisions','Visioning session','Review & reflection'] },
+    { domain:'LUNAMOR', key:'lunacof',  label:'LUNACOF',  section:'Memory & Archive',
+      items:['Recording & documentation','Photo & media archive','Legacy & history','Journaling','Digital filing','Learning notes'] },
+    { domain:'FAMILY',    key:'family',    label:'FAMILY',    section:'Mum Care · Legacy · Lyn Today · Others',
+      items:['SAHP — Care package','Appointments','Practical support','Memory archive','Life & legacy','Woody','Sisters','Family call','Extended family'] },
+    { domain:'WELLBEING', key:'wellbeing', label:'WELLBEING', section:'Movement · Ocean · Thermal · Mind & Spirit · Daily Practices',
+      items:['Tai Chi — 18 Form Qi Gong','Walk','Gym','SlapDanceSing','Surf','Kayak','Freedive','Hot therapy','Cold therapy','The Great Learning','Breathwork','Down the Bilby hole','Counselling','Sleep & rest','Nutrition'] },
+    { domain:'HOME',      key:'home',      label:'HOME',      section:'Estate · Land · Future Living · Day-to-Day',
+      items:['What is inherited','Property sale','Legal & estate admin','Land research','Investment planning','Finance options','Own chapter vision','Location research','Community & lifestyle','Declutter & organise','Home maintenance'] },
+  ];
+
+  // ── Compute active entries per sub-domain + collect lit items ───────────────
+  var subCounts = {};
+  var litItems = {};
+  entries.forEach(function(e){
+    var d=(e.domain||'').toLowerCase();
+    var ld=(e.lunadom||'').toLowerCase();
+    // key for LUNAMOR entries is the lunadom; for others it's the domain
+    var k = (d==='lunamor' && ld) ? ld : d;
+    subCounts[k]=(subCounts[k]||0)+1;
+    // collect lit items
+    (e.items||[]).forEach(function(item){ litItems[item]=(litItems[item]||0)+1; });
+  });
+
+  // ── Build star map string for prompt ──────────────────────────────────────
+  var litLines=[], darkLines=[];
+  STAR_MAP.forEach(function(star){
+    var count=subCounts[star.key]||0;
+    var activeItems=star.items.filter(function(i){return litItems[i]>0;});
+    var darkItemsList=star.items.filter(function(i){return !litItems[i];});
+    if(count>0){
+      litLines.push('  ★ '+star.domain+' › '+star.label+' ('+count+' check-in'+(count!==1?'s':'')+')');
+      if(activeItems.length) litLines.push('      Active: '+activeItems.join(', '));
+      if(darkItemsList.length) litLines.push('      Untouched: '+darkItemsList.join(', '));
+    } else {
+      darkLines.push('  ✦ '+star.domain+' › '+star.label);
+      darkLines.push('      All dark: '+star.items.join(', '));
+    }
+  });
+
+  // ── Full constellation reference ───────────────────────────────────────────
+  var mapRef='FULL PENGUIN HQ STAR MAP (4 domains · 12 sub-domains · 97 items):\n';
+  var lastDomain='';
+  STAR_MAP.forEach(function(star){
+    if(star.domain!==lastDomain){ mapRef+='\n['+star.domain+']\n'; lastDomain=star.domain; }
+    mapRef+='  '+star.label+' — '+star.section+'\n';
+    mapRef+='    Items: '+star.items.join(' · ')+'\n';
+  });
+
+  // ── Recent entries ─────────────────────────────────────────────────────────
+  var lines=entries.slice(0,12).map(function(e){
+    var d=new Date(e.ts);
+    var ds=d.toLocaleDateString('en-AU',{weekday:'long',day:'numeric',month:'long'});
+    var l='['+ds+'] '+(e.domain||'')+(e.lunadom?' › '+e.lunadom:'')+' · '+(e.zpd||'')+' · '+(e.direction||'')+' · '+(e.exchange||'');
+    if(e.items&&e.items.length) l+='\n  Touched: '+(e.items||[]).join(', ');
+    if(e.note) l+='\n  Note: '+e.note;
+    return l;
+  }).join('\n\n');
+
+  // ── Prompt ─────────────────────────────────────────────────────────────────
+  var prompt='PENGUIN SEASON ORACLE REQUEST\n'
+    +'Season: '+s.name+' ('+s.language+')\n'
+    +'Month: '+mn+' '+yr+'\n'
+    +'Season character: '+s.character+'\n'
+    +'Season call: '+s.call+'\n\n'
+    +'PROFILE:\n'
+    +'- Cancer Sun 19° · Capricorn Rising · Sagittarius Moon 14°\n'
+    +'- HD: Manifesting Generator 5/2 · Emotional Authority · Channels 53-42 / 32-54 / 63-4\n'
+    +'- Mayan: White Rhythmic Dog (Kin 6) · Flow Goer + Deep Thinker\n'
+    +'- Life Path 30/3 · Personal Year 1 (seeds — shifts 12 Jul 2026)\n\n'
+    +mapRef+'\n'
+    +'LIT STARS this month (active):\n'+(litLines.length?litLines.join('\n'):'  No check-ins this month yet')+'\n\n'
+    +'DARK STARS this month (unvisited):\n'+(darkLines.length?darkLines.join('\n'):'  All areas visited — full sky lit')+'\n\n'
+    +'MONTHLY STATS ('+entries.length+' check-ins · '+Math.floor(tm/60)+'h '+tm%60+'m):\n'
+    +'Zones: '+srCount(entries,'zpd').map(function(p){return p[0]+' ('+p[1]+')';}).join(' · ')+'\n'
+    +'Tides: '+srCount(entries,'direction').map(function(p){return p[0]+' ('+p[1]+')';}).join(' · ')+'\n'
+    +'Exchange: '+srCount(entries,'exchange').map(function(p){return p[0]+' ('+p[1]+')';}).join(' · ')+'\n\n'
+    +'RECENT CHECK-INS:\n'+(lines||'None logged yet.')+'\n\n'
+    +'---\n'
+    +'You are the Penguin Oracle.\n\n'
+    +'NAVIGATION CONTEXT: Penguin\'s Pacific ancestry (Western Polynesian 15.6%, Māori 7%) carries the tradition of star navigation — reading the night sky to know position and heading on open ocean. The Penguin HQ star map works the same way: 4 domains, 12 sub-domains, 97 items — each a star. Lit stars (active this month) are visible for navigation. Dark stars (unvisited) are below the horizon. Together they reveal current position and heading.\n\n'
+    +'1. SEASON PORTRAIT — What does '+s.name+' mean for Penguin right now, on this country, in this season?\n\n'
+    +'2. STAR NAVIGATION — Read the full constellation. Which stars are lit, which are dark? What does the pattern reveal about where Penguin is on the water right now — and what heading is emerging? Speak across all four domains (LUNAMOR, FAMILY, WELLBEING, HOME) and go as deep as the item level where it\'s revealing.\n\n'
+    +'3. ALIVE — What is genuinely in motion? What wind is in the sail?\n\n'
+    +'4. BELOW THE HORIZON — Which dark stars need to rise? What is being left unnavigated, and what might that cost?\n\n'
+    +'5. SEASONAL HEADING — One course correction or orientation rooted in what this season on this country is calling for. Where to point the waka.';
+
+  var toast=document.getElementById('sr-toast');
+  function showToast(){ toast.textContent='Season Oracle copied — paste into Claude ✓'; toast.style.opacity='1'; setTimeout(function(){toast.style.opacity='0';},3000); }
+  navigator.clipboard.writeText(prompt).then(showToast).catch(function(){
+    var ta=document.createElement('textarea'); ta.value=prompt; document.body.appendChild(ta); ta.select(); document.execCommand('copy'); document.body.removeChild(ta); showToast();
+  });
+}
+// Set season button label on load
+(function(){
+  var s=SEASONS.find(function(x){return x.months.indexOf(new Date().getMonth())>-1;})||SEASONS[0];
+  function setBtn(){ var b=document.getElementById('p1-season-btn'); if(b) b.textContent=s.name; }
+  if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',setBtn); else setBtn();
+})();
+</script>
+
 </body>
