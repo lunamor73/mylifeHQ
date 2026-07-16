@@ -107,7 +107,9 @@
     .p1-btn-row {
       margin-top: 28px; display: flex; flex-direction: column; align-items: center; gap: 8px;
     }
-    .p1-oracle {
+    .p1-btn-sub{display:block;font-size:9px;letter-spacing:0.16em;text-transform:uppercase;opacity:0.65;margin-bottom:2px;font-weight:500}
+.p1-btn-main{display:block;font-size:15px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase}
+.p1-oracle {
       width: 200px;
       padding: 13px 28px; border-radius: 12px;
       border: 1.5px solid var(--gold); background: var(--gold-dim);
@@ -604,8 +606,8 @@
     <span class="tm-chip"><span class="tm-em" id="tide-em">〜</span><span id="tide-lbl">—</span></span>
   </div>
   <div class="p1-btn-row">
-    <button class="p1-oracle" onclick="generateOraclePrompt()">Oraculum</button>
-    <button class="p1-season" onclick="openSeasonReview()" id="p1-season-btn">Season Review</button>
+    <button class="p1-oracle" onclick="generateOraclePrompt()"><span class="p1-btn-sub">Weekly</span><span class="p1-btn-main">Oraculum</span></button>
+    <button class="p1-season" onclick="openSeasonReview()" id="p1-season-btn"><span class="p1-btn-sub">Seasonal</span><span class="p1-btn-main">Oracle</span></button>
   </div>
   <div class="oracle-toast" id="oracle-toast">Prompt copied — paste into Claude ✓</div>
 </div>
@@ -3480,8 +3482,7 @@ function buildSeasonReview(){
   document.getElementById('sr-desc').textContent=s.character;
   document.getElementById('sr-call').textContent='↬ '+s.call;
   document.getElementById('sr-month-label').textContent=mn+' '+yr+' · '+entries.length+' check-in'+(entries.length!==1?'s':'');
-  var homeBtn=document.getElementById('p1-season-btn');
-  if(homeBtn) homeBtn.textContent=s.name;
+  // season button label is static 'Seasonal Oracle'
   if(!entries.length){
     ['sr-domains','sr-zones','sr-tides','sr-exchange'].forEach(function(id){
       document.getElementById(id).innerHTML='<div class="sr-empty">No entries this month yet</div>';
@@ -3616,8 +3617,7 @@ function generateSeasonOracle(){
 // Set season button label on load
 (function(){
   var s=SEASONS.find(function(x){return x.months.indexOf(new Date().getMonth())>-1;})||SEASONS[0];
-  function setBtn(){ var b=document.getElementById('p1-season-btn'); if(b) b.textContent=s.name; }
-  if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',setBtn); else setBtn();
+  // season button label is static
 })();
 </script>
 
