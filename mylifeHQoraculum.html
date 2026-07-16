@@ -3713,8 +3713,20 @@ function generateSeasonOracle(){
 (function(){
 var _opRange = '7';
 
+function opAllEntries(){
+  var hist=[], arch=[];
+  try{ hist=JSON.parse(localStorage.getItem('phq-history')||'[]'); }catch(e){}
+  try{ arch=JSON.parse(localStorage.getItem('phq-insight-archive')||'[]'); }catch(e){}
+  var seen={};
+  return [].concat(hist,arch).filter(function(e){
+    if(!e||!e.ts||e.ts===9999999999999) return false;
+    var k=String(e.ts);
+    if(seen[k]) return false; seen[k]=true;
+    return true;
+  }).sort(function(a,b){ return new Date(b.ts)-new Date(a.ts); });
+}
 function opEntries(range){
-  var hist = getHistory();
+  var hist = opAllEntries();
   if(range==='all') return hist;
   var now = Date.now();
   if(range==='month'){
@@ -3862,7 +3874,16 @@ var SM_POS = {
 };
 
 function smActivity(){
-  var hist = (typeof getHistory==='function') ? getHistory() : [];
+  var hist=[], arch=[];
+  try{ hist=JSON.parse(localStorage.getItem('phq-history')||'[]'); }catch(e){}
+  try{ arch=JSON.parse(localStorage.getItem('phq-insight-archive')||'[]'); }catch(e){}
+  var seen={};
+  hist = [].concat(hist,arch).filter(function(e){
+    if(!e||!e.ts||e.ts===9999999999999) return false;
+    var k=String(e.ts);
+    if(seen[k]) return false; seen[k]=true;
+    return true;
+  });
   var now = Date.now(), D=24*60*60*1000;
   var recent7={}, prior30={}, itemRecent={}, itemPrior={};
   hist.forEach(function(e){
