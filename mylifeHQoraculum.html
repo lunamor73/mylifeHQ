@@ -2527,7 +2527,7 @@ function mundusCopy() {
 </style>
 <div id="p10" class="page">
   <div class="top-bar" style="background:transparent;border:none">
-    <button class="back-btn" onclick="nav(\'p1\')" style="color:#cfd8e8">&#8592; Back</button>
+    <button class="back-btn" onclick="nav('p1')" style="color:#cfd8e8">&#8592; Back</button>
     <div class="bar-title" style="color:#e8d5a8">Star Map</div>
     <div style="width:60px"></div>
   </div>
@@ -3187,8 +3187,7 @@ window.generateOraclePrepPrompt = function(){
       if(e.timeMins) lines.push('  Time: '+e.timeMins+'m');
       if(e.note) lines.push('  Note: '+e.note);
     });
-    if(entries.length>20) lines.push('
-... and '+(entries.length-20)+' earlier entries.');
+    if(entries.length>20){ lines.push(''); lines.push('... and '+(entries.length-20)+' earlier entries.'); }
   }
 
   lines.push('');
@@ -3207,6 +3206,179 @@ window.generateOraclePrepPrompt = function(){
 })();
 </script>
 
+
+<script>
+(function(){
+// ── STAR MAP — Penguin HQ constellation ──────────────────────────────────
+var SM_MAP = [
+  { domain:'LUNAMOR', key:'lunava',   label:'LUNAVĀ',   items:['SlapDanceSing','Sticking','Low Boy','Booty Shaker','MIDI Mat','Ethno Jazz','Writing','Clown Secret','Strumming','Case Unknown','Rehearsal','Recording a session','Arrangement & production'] },
+  { domain:'LUNAMOR', key:'lunawan',  label:'LUNAWĀN',  items:['Signal chain / UAD','Live rig setup','Lowboy set','I.S.A.A.C. — Ira Seidenstein','Level Up Club — Francesca','Life Coaching','Research & study','Reading','Podcast & listening','Prototyping'] },
+  { domain:'LUNAMOR', key:'lunatir',  label:'LUNATIR',  items:['Gigs & performances','Workshops & teaching','Community events','Collaborations','Open mic / jam session','Festival & event prep'] },
+  { domain:'LUNAMOR', key:'lunaama',  label:'LUNAAMA',  items:['Scheduling & calendar','Contracts & agreements','Logistics & operations','Email triage','Systems & tools setup','Filing & records'] },
+  { domain:'LUNAMOR', key:'lunalume', label:'LUNALUME', items:['Email & correspondence','Social media','Press & media','Newsletter & blog','Website & bio'] },
+  { domain:'LUNAMOR', key:'lunacai',  label:'LUNACÁI',  items:['Invoicing','Expenses','Tax & accounting','Budget review','Grant & funding research'] },
+  { domain:'LUNAMOR', key:'lunafam',  label:'LUNAFAM',  items:['Team & collaborators','Network & contacts','Community relationships','Mentor check-in','Start Ups','Follow-up & nurture'] },
+  { domain:'LUNAMOR', key:'lunadan',  label:'LUNADÁN',  items:['Goals & targets','Planning & roadmap','Key decisions','Visioning session','Review & reflection'] },
+  { domain:'LUNAMOR', key:'lunacof',  label:'LUNACOF',  items:['Recording & documentation','Photo & media archive','Legacy & history','Journaling','Digital filing','Learning notes'] },
+  { domain:'FAMILY',    key:'family',    label:'FAMILY',    items:['SAHP — Care package','Appointments','Practical support','Memory archive','Life & legacy','Woody','Sisters','Family call','Extended family'] },
+  { domain:'WELLBEING', key:'wellbeing', label:'WELLBEING', items:['Tai Chi — 18 Form Qi Gong','Walk','Gym','SlapDanceSing','Surf','Kayak','Freedive','Hot therapy','Cold therapy','The Great Learning','Breathwork','Down the Bilby hole','Counselling','Sleep & rest','Nutrition'] },
+  { domain:'HOME',      key:'home',      label:'HOME',      items:['What is inherited','Property sale','Legal & estate admin','Land research','Investment planning','Finance options','Own chapter vision','Location research','Community & lifestyle','Declutter & organise','Home maintenance'] },
+];
+
+// Cluster positions on 400x560 canvas — hand-laid like a real sky
+var SM_POS = {
+  lunava:  {x:110,y:105}, lunawan: {x:210,y:70},  lunatir: {x:300,y:120},
+  lunaama: {x:70, y:190}, lunalume:{x:180,y:165}, lunacai: {x:290,y:210},
+  lunafam: {x:120,y:265}, lunadan: {x:225,y:250}, lunacof: {x:330,y:290},
+  family:  {x:100,y:380}, wellbeing:{x:230,y:400}, home:   {x:320,y:470},
+};
+
+function smActivity(){
+  var hist = (typeof getHistory==='function') ? getHistory() : [];
+  var now = Date.now(), D=24*60*60*1000;
+  var recent7={}, prior30={}, itemRecent={}, itemPrior={};
+  hist.forEach(function(e){
+    var age = now - new Date(e.ts).getTime();
+    if(age > 30*D) return;
+    var d=(e.domain||'').toLowerCase(), ld=(e.lunadom||'').toLowerCase();
+    var k=(d==='lunamor'&&ld)?ld:d;
+    var bucket = age <= 7*D ? recent7 : prior30;
+    bucket[k]=(bucket[k]||0)+1;
+    (e.items||[]).forEach(function(it){
+      var ib = age <= 7*D ? itemRecent : itemPrior;
+      ib[it]=(ib[it]||0)+1;
+    });
+  });
+  return {recent7:recent7, prior30:prior30, itemRecent:itemRecent, itemPrior:itemPrior};
+}
+
+// status: lit (active last 7d), rising (recent but not prior — newly arrived), fading (prior but not recent), dark
+function smStatus(recent, prior){
+  if(recent>0 && prior>0) return 'lit';
+  if(recent>0) return 'rising';
+  if(prior>0) return 'fading';
+  return 'dark';
+}
+
+var SM_COLORS = {
+  lit:    {fill:'#ffd98a', glow:'#ffd98a', r:7,   glowR:14},
+  rising: {fill:'#ffb35c', glow:'#ffb35c', r:6.5, glowR:16},
+  fading: {fill:'#5a7bb0', glow:'#43598a', r:5,   glowR:8},
+  dark:   {fill:'#2a3350', glow:'none',    r:4,   glowR:0},
+};
+var SM_ITEM_COLORS = {
+  lit:    {fill:'#ffe9b8', r:2.4},
+  rising: {fill:'#ffc98a', r:2.2},
+  fading: {fill:'#4a6494', r:1.8},
+  dark:   {fill:'#1f2740', r:1.5},
+};
+
+function smBuild(){
+  var svg = document.getElementById('sm-svg');
+  var act = smActivity();
+  var NS='http://www.w3.org/2000/svg';
+  svg.innerHTML='';
+
+  // background scatter stars
+  var bg='';
+  for(var i=0;i<70;i++){
+    var bx=Math.random()*400, by=Math.random()*560, br=Math.random()*0.9+0.3, bo=Math.random()*0.35+0.08;
+    bg+='<circle cx="'+bx.toFixed(1)+'" cy="'+by.toFixed(1)+'" r="'+br.toFixed(1)+'" fill="#8fa5cc" opacity="'+bo.toFixed(2)+'"/>';
+  }
+  svg.innerHTML = bg;
+
+  // domain boundary lines (faint constellation lines between LUNAMOR anchors)
+  var lunaKeys=['lunava','lunawan','lunatir','lunacai','lunacof','lunadan','lunafam','lunaama'];
+  var lines='';
+  for(var li=0;li<lunaKeys.length;li++){
+    var a=SM_POS[lunaKeys[li]], b=SM_POS[lunaKeys[(li+1)%lunaKeys.length]];
+    lines+='<line x1="'+a.x+'" y1="'+a.y+'" x2="'+b.x+'" y2="'+b.y+'" stroke="#2a3a5e" stroke-width="0.5" opacity="0.4"/>';
+  }
+  // lines linking the 4 domains
+  lines+='<line x1="180" y1="165" x2="100" y2="380" stroke="#2a3a5e" stroke-width="0.5" opacity="0.25"/>';
+  lines+='<line x1="100" y1="380" x2="230" y2="400" stroke="#2a3a5e" stroke-width="0.5" opacity="0.25"/>';
+  lines+='<line x1="230" y1="400" x2="320" y2="470" stroke="#2a3a5e" stroke-width="0.5" opacity="0.25"/>';
+  svg.innerHTML += lines;
+
+  SM_MAP.forEach(function(cluster){
+    var pos=SM_POS[cluster.key];
+    var rec=act.recent7[cluster.key]||0, pri=act.prior30[cluster.key]||0;
+    var status=smStatus(rec,pri);
+    var c=SM_COLORS[status];
+    var g=document.createElementNS(NS,'g');
+    g.setAttribute('data-key',cluster.key);
+    g.style.cursor='pointer';
+
+    // item stars in orbit
+    var n=cluster.items.length;
+    cluster.items.forEach(function(item,idx){
+      var ang=(idx/n)*Math.PI*2 - Math.PI/2;
+      var rad=16+((idx%3)*6);
+      var ix=pos.x+Math.cos(ang)*rad, iy=pos.y+Math.sin(ang)*rad;
+      var iRec=act.itemRecent[item]||0, iPri=act.itemPrior[item]||0;
+      var iStatus=smStatus(iRec,iPri);
+      var ic=SM_ITEM_COLORS[iStatus];
+      var star=document.createElementNS(NS,'circle');
+      star.setAttribute('cx',ix.toFixed(1)); star.setAttribute('cy',iy.toFixed(1));
+      star.setAttribute('r',ic.r); star.setAttribute('fill',ic.fill);
+      if(iStatus==='lit'||iStatus==='rising') star.setAttribute('class','sm-star-lit');
+      g.appendChild(star);
+    });
+
+    // glow halo
+    if(c.glowR>0){
+      var halo=document.createElementNS(NS,'circle');
+      halo.setAttribute('cx',pos.x); halo.setAttribute('cy',pos.y);
+      halo.setAttribute('r',c.glowR); halo.setAttribute('fill',c.glow);
+      halo.setAttribute('opacity','0.18');
+      g.appendChild(halo);
+    }
+    // anchor star
+    var anchor=document.createElementNS(NS,'circle');
+    anchor.setAttribute('cx',pos.x); anchor.setAttribute('cy',pos.y);
+    anchor.setAttribute('r',c.r); anchor.setAttribute('fill',c.fill);
+    if(status==='lit'||status==='rising') anchor.setAttribute('class','sm-star-lit');
+    g.appendChild(anchor);
+
+    // label
+    var txt=document.createElementNS(NS,'text');
+    txt.setAttribute('x',pos.x); txt.setAttribute('y',pos.y+((c.r||5)+13));
+    txt.setAttribute('text-anchor','middle');
+    txt.setAttribute('font-size','7.5');
+    txt.setAttribute('letter-spacing','0.08em');
+    txt.setAttribute('fill', status==='dark' ? '#3d4a6e' : '#cfd8e8');
+    txt.setAttribute('opacity', status==='dark' ? '0.7':'0.85');
+    txt.textContent=cluster.label;
+    g.appendChild(txt);
+
+    g.addEventListener('click',function(ev){
+      ev.stopPropagation();
+      smShowTooltip(cluster,status,rec,pri,act);
+    });
+    svg.appendChild(g);
+  });
+
+  svg.addEventListener('click',function(){ document.getElementById('sm-tooltip').classList.remove('show'); });
+}
+
+function smShowTooltip(cluster,status,rec,pri,act){
+  var tt=document.getElementById('sm-tooltip');
+  var statusLabels={lit:'Lit — active and steady',rising:'Rising — coming into the light',fading:'Fading — slipping below the horizon',dark:'Dark — below the horizon'};
+  var activeItems=cluster.items.filter(function(i){return (act.itemRecent[i]||0)>0;});
+  var html='<div class="sm-tt-domain">'+cluster.domain+'</div>'
+    +'<div class="sm-tt-name">'+cluster.label+'</div>'
+    +'<div class="sm-tt-status">'+statusLabels[status]+' · '+rec+' this week · '+pri+' in prior weeks</div>';
+  if(activeItems.length) html+='<div class="sm-tt-items">Active: '+activeItems.join(' · ')+'</div>';
+  tt.innerHTML=html;
+  tt.classList.add('show');
+}
+
+window.openStarMap = function(){
+  smBuild();
+  nav('p10');
+};
+})();
+</script>
 </body>) */
 var _origGet = Storage.prototype.getItem;
 var _origSet = Storage.prototype.setItem;
