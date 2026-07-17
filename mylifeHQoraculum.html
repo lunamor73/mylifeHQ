@@ -50,11 +50,19 @@
     @media (min-width: 640px) {
       .page {
         left: 50%; right: auto;
-        width: 600px;
-        margin-left: -300px;
+        width: min(1100px, 94vw);
+        margin-left: calc(min(1100px, 94vw) * -0.5);
         overflow-x: hidden;
         box-shadow: 0 0 60px rgba(0,0,0,0.06);
       }
+    }
+    @media (min-width: 900px) {
+      .ci-body, .hist-body, .mundus-body { max-width: 720px; }
+      .luna-grid { max-width: 640px; }
+      .domain-grid { max-width: 760px; }
+      .ins-body { width: 100%; max-width: 860px; margin: 0 auto; }
+      .sr-body, .op-body { width: 100%; max-width: 860px; margin: 0 auto; box-sizing: border-box; }
+      .sr-header { width: 100%; }
     }
 
     /* ── TOP BAR ── */
@@ -2535,10 +2543,10 @@ function mundusCopy() {
     <div class="sm-crumb" id="sm-crumb">✦ Universe</div>
     <button class="wb-toggle" onclick="openWeb()" style="top:10px;right:14px">&#128376; Web</button>
     <div class="sm-legend">
-      <span><span class="sm-dot" style="background:#b8920f"></span>Lit</span>
+      <span><span class="sm-dot" style="background:#b8920f"></span>Zenith</span>
       <span><span class="sm-dot" style="background:#d98a2b"></span>Rising</span>
-      <span><span class="sm-dot" style="background:#8aa0c0"></span>Fading</span>
-      <span><span class="sm-dot" style="background:#c9c9c9"></span>Dark</span>
+      <span><span class="sm-dot" style="background:#8aa0c0"></span>Setting</span>
+      <span><span class="sm-dot" style="background:#c9c9c9"></span>Horizon</span>
     </div>
     <svg id="sm-svg" viewBox="0 0 400 560" preserveAspectRatio="xMidYMid meet"></svg>
     <div class="sm-tooltip" id="sm-tooltip"></div>
@@ -3798,10 +3806,10 @@ function generateSeasonOracle(){
     if(count>0){
       litLines.push('  ★ '+star.domain+' › '+star.label+' ('+count+' check-in'+(count!==1?'s':'')+')');
       if(activeItems.length) litLines.push('      Active: '+activeItems.join(', '));
-      if(darkItemsList.length) litLines.push('      Untouched: '+darkItemsList.join(', '));
+      if(darkItemsList.length) litLines.push('      Not yet risen: '+darkItemsList.join(', '));
     } else {
       darkLines.push('  ✦ '+star.domain+' › '+star.label);
-      darkLines.push('      All dark: '+star.items.join(', '));
+      darkLines.push('      Below the horizon: '+star.items.join(', '));
     }
   });
 
@@ -3836,8 +3844,8 @@ function generateSeasonOracle(){
     +'- Mayan: White Rhythmic Dog (Kin 6) · Flow Goer + Deep Thinker\n'
     +'- Life Path 30/3 · Personal Year 1 (seeds — shifts 12 Jul 2026)\n\n'
     +mapRef+'\n'
-    +'LIT STARS this month (active):\n'+(litLines.length?litLines.join('\n'):'  No check-ins this month yet')+'\n\n'
-    +'DARK STARS this month (unvisited):\n'+(darkLines.length?darkLines.join('\n'):'  All areas visited — full sky lit')+'\n\n'
+    +'AT ZENITH & RISING this month (active):\n'+(litLines.length?litLines.join('\n'):'  No check-ins this month yet')+'\n\n'
+    +'BELOW THE HORIZON this month (yet to rise):\n'+(darkLines.length?darkLines.join('\n'):'  All areas visited — the whole sky overhead')+'\n\n'
     +'MONTHLY STATS ('+entries.length+' check-ins · '+Math.floor(tm/60)+'h '+tm%60+'m):\n'
     +'Zones: '+srCount(entries,'zpd').map(function(p){return p[0]+' ('+p[1]+')';}).join(' · ')+'\n'
     +'Tides: '+srCount(entries,'direction').map(function(p){return p[0]+' ('+p[1]+')';}).join(' · ')+'\n'
@@ -3845,11 +3853,11 @@ function generateSeasonOracle(){
     +'RECENT CHECK-INS:\n'+(lines||'None logged yet.')+'\n\n'
     +'---\n'
     +'You are the Penguin Oracle.\n\n'
-    +'NAVIGATION CONTEXT: Penguin\'s Pacific ancestry (Western Polynesian 15.6%, Māori 7%) carries the tradition of star navigation — reading the night sky to know position and heading on open ocean. The Penguin HQ star map works the same way: 4 domains, 12 sub-domains, 97 items — each a star. Lit stars (active this month) are visible for navigation. Dark stars (unvisited) are below the horizon. Together they reveal current position and heading.\n\n'
+    +'NAVIGATION CONTEXT: Penguin\'s Pacific ancestry (Western Polynesian 15.6%, Māori 7%) carries the tradition of star navigation — reading the night sky to know position and heading on open ocean. The Penguin HQ star map works the same way: 4 domains, 12 sub-domains, 97 items — each a star. Every star holds a position on its arc: rising into view, at zenith overhead (the ones being steered by), setting as this arc completes, or below the horizon waiting to rise. Nothing is lost — setting stars return. Together the sky reveals current position and heading.\n\n'
     +'1. SEASON PORTRAIT — What does '+s.name+' mean for Penguin right now, on this country, in this season?\n\n'
-    +'2. STAR NAVIGATION — Read the full constellation. Which stars are lit, which are dark? What does the pattern reveal about where Penguin is on the water right now — and what heading is emerging? Speak across all four domains (LUNAMOR, FAMILY, WELLBEING, HOME) and go as deep as the item level where it\'s revealing.\n\n'
+    +'2. STAR NAVIGATION — Read the full constellation. Which stand at zenith, which are rising, which are setting, which wait below the horizon? What does the pattern reveal about where Penguin is on the water right now — and what heading is emerging? Speak across all four domains (LUNAMOR, FAMILY, WELLBEING, HOME) and go as deep as the item level where it\'s revealing.\n\n'
     +'3. ALIVE — What is genuinely in motion? What wind is in the sail?\n\n'
-    +'4. BELOW THE HORIZON — Which dark stars need to rise? What is being left unnavigated, and what might that cost?\n\n'
+    +'4. BELOW THE HORIZON — Which stars below the horizon are ready to rise? What is being left unnavigated, and what might that cost?\n\n'
     +'5. SEASONAL HEADING — One course correction or orientation rooted in what this season on this country is calling for. Where to point the waka.';
 
   var toast=document.getElementById('sr-toast');
@@ -4088,8 +4096,8 @@ var COLORS = {
 };
 var DOM_HUE = { lunamor:'#b8920f', family:'#8a5aa8', wellbeing:'#2f8a7a', home:'#b06a4a' };
 var STATUS_TEXT = {
-  lit:'Lit — active and steady', rising:'Rising — coming into the light',
-  fading:'Fading — slipping below the horizon', dark:'Dark — below the horizon'
+  lit:'Zenith — overhead, steering by it', rising:'Rising — climbing into view',
+  fading:'Setting — completing this arc', dark:'Horizon — waiting to rise'
 };
 
 // ── Data / activity ─────────────────────────────────────────────────────────
@@ -4593,7 +4601,7 @@ var WISDOM = {
     'Tend this and it tends you back.','What you visit grows strong.',
     'The web trembles where attention lands.','Begin where your hands already are.',
     'Repetition is silk.','Nothing woven is wasted.','Return is the deepest practice.',
-    'One strand at a time, the pattern.','What waits in the dark still belongs to the web.',
+    'One strand at a time, the pattern.','What waits below the horizon still belongs to the web.',
     'Follow the pull, not the plan.'
   ],
   _centre: [
@@ -5046,7 +5054,7 @@ function wire(){
   if(crumb) crumb.addEventListener('click',function(){ flyTo(0,0,1700); hideTip(); });
 }
 
-var STATUS_TEXT={lit:'Lit — active and steady',rising:'Rising — coming into the light',fading:'Fading — slipping below the horizon',dark:'Dark — below the horizon'};
+var STATUS_TEXT={lit:'Zenith — overhead, steering by it',rising:'Rising — climbing into view',fading:'Setting — completing this arc',dark:'Horizon — waiting to rise'};
 function showTip(n){
   var tt=document.getElementById('wb-tooltip');
   var sup=n.type==='centre'?'THE WEAVER':(n.type==='domain'?'DOMAIN':(n.dom||'').toUpperCase());
