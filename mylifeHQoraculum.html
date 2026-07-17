@@ -4871,40 +4871,48 @@ function buildDOM(){
       th+='<line x1="'+n.parent.x.toFixed(1)+'" y1="'+n.parent.y.toFixed(1)+'" x2="'+n.x.toFixed(1)+'" y2="'+n.y.toFixed(1)+'" stroke="'+silk+'" stroke-width="'+(0.8+sw(n.act)*0.4).toFixed(1)+'" opacity="'+(n.act?0.6:0.3)+'"/>';
   });
 
-  // ── The web proper — modelled on the LUNAWĀN icon ────────────────────────
-  // strong radial spokes, tight hub spiral, free zone, then dense capture spiral
-  var clAngles=clNodes.map(function(n){return n.ang;}).sort(function(x,y){return x-y;});
-  var S=clAngles.length;
-  function jit(i,l){ var v=Math.sin(i*127.3+l*311.7)*43758.5453; return (v-Math.floor(v)-0.5); }
-  var sectorAct=clAngles.map(function(a2){
-    var best=0; clNodes.forEach(function(cn){ if(Math.abs(cn.ang-a2)<0.01) best=cn.act||0; });
-    return best;
-  });
-  // spokes — hub to rim
-  clAngles.forEach(function(a2,si){
-    var wob=jit(si,99)*0.012;
-    var x2=Math.cos(a2+wob)*930, y2=Math.sin(a2+wob)*930;
-    th+='<line x1="'+(Math.cos(a2)*16).toFixed(1)+'" y1="'+(Math.sin(a2)*16).toFixed(1)+'" x2="'+x2.toFixed(1)+'" y2="'+y2.toFixed(1)+'" stroke="'+silk+'" stroke-width="1.4" opacity="0.55"/>';
-  });
-  // spiral builder: continuous laps climbing outward, slight sag + wobble
-  function spiral(startR, spacing, laps, w0, op0){
-    for(var l=0;l<laps;l++){
-      for(var i2=0;i2<S;i2++){
-        var aA=clAngles[i2], aB=clAngles[(i2+1)%S];
-        if(i2===S-1) aB+=Math.PI*2;
-        var rA=startR+(l+i2/S)*spacing + jit(i2,l)*spacing*0.30;
-        var rB=startR+(l+(i2+1)/S)*spacing + jit((i2+1)%S,l)*spacing*0.30;
-        var act=Math.max(sectorAct[i2],sectorAct[(i2+1)%S]);
-        var xa=Math.cos(aA)*rA, ya=Math.sin(aA)*rA;
-        var xb=Math.cos(aB)*rB, yb=Math.sin(aB)*rB;
-        var mx=(xa+xb)/2*0.955, my=(ya+yb)/2*0.955;
-        th+='<path d="M'+xa.toFixed(1)+' '+ya.toFixed(1)+' Q'+mx.toFixed(1)+' '+my.toFixed(1)+' '+xb.toFixed(1)+' '+yb.toFixed(1)
-          +'" fill="none" stroke="'+silk+'" stroke-width="'+(act?w0*1.35:w0).toFixed(2)+'" opacity="'+(act?op0+0.15:op0).toFixed(2)+'"/>';
-      }
+  // ── The connectors ARE the web — every strand anchored to icons ─────────
+  function ringThrough(list, w0, op0){
+    if(list.length<2) return;
+    var sorted=list.slice().sort(function(x,y){return x.ang-y.ang;});
+    for(var i2=0;i2<sorted.length;i2++){
+      var A=sorted[i2], B=sorted[(i2+1)%sorted.length];
+      var mx=(A.x+B.x)/2*0.94, my=(A.y+B.y)/2*0.94;
+      var act=(A.act||0)+(B.act||0);
+      th+='<path d="M'+A.x.toFixed(1)+' '+A.y.toFixed(1)+' Q'+mx.toFixed(1)+' '+my.toFixed(1)+' '+B.x.toFixed(1)+' '+B.y.toFixed(1)
+        +'" fill="none" stroke="'+silk+'" stroke-width="'+(act?w0*1.35:w0).toFixed(2)+'" opacity="'+(act?op0+0.16:op0).toFixed(2)+'"/>';
     }
   }
-  spiral(20, 11, 6, 0.7, 0.42);      // tight hub
-  spiral(165, 33, 22, 0.85, 0.36);   // dense capture spiral (free zone 86–165 left open)
+  // ring through the 4 domains, ring through all 21 clusters
+  ringThrough(doNodes, 1.3, 0.5);
+  ringThrough(clNodes, 1.1, 0.46);
+  // one ring per item tier — silk passing exactly through every item icon
+  for(var t=0;t<R_ITS.length;t++){
+    (function(tier){
+      var ring=itNodes.filter(function(n){return Math.abs(Math.hypot(n.x,n.y)-R_ITS[tier])<25;});
+      ringThrough(ring, 0.9, 0.4);
+    })(t);
+  }
+  // zigzag mesh: connect consecutive items across tiers within each cluster fan
+  clNodes.forEach(function(cl){
+    var kids=itNodes.filter(function(n){return n.clusterKey===cl.key;}).sort(function(x,y){return x.ang-y.ang;});
+    for(var z=0;z<kids.length-1;z++){
+      var A3=kids[z], B3=kids[z+1];
+      if(Math.abs(Math.hypot(A3.x,A3.y)-Math.hypot(B3.x,B3.y))<10) continue; // same tier: ring already links
+      th+='<line x1="'+A3.x.toFixed(1)+'" y1="'+A3.y.toFixed(1)+'" x2="'+B3.x.toFixed(1)+'" y2="'+B3.y.toFixed(1)+'" stroke="'+silk+'" stroke-width="0.7" opacity="0.35"/>';
+    }
+  });
+  // tiny hub platform where the weaver sits
+  var clAngles=clNodes.map(function(n){return n.ang;}).sort(function(x,y){return x-y;});
+  var S=clAngles.length;
+  for(var hl=0;hl<3;hl++){
+    for(var i4=0;i4<S;i4++){
+      var hA=clAngles[i4], hB=clAngles[(i4+1)%S];
+      if(i4===S-1) hB+=Math.PI*2;
+      var rA2=20+(hl+i4/S)*10, rB2=20+(hl+(i4+1)/S)*10;
+      th+='<path d="M'+(Math.cos(hA)*rA2).toFixed(1)+' '+(Math.sin(hA)*rA2).toFixed(1)+' Q'+(Math.cos((hA+hB)/2)*(rA2+rB2)/2*0.9).toFixed(1)+' '+(Math.sin((hA+hB)/2)*(rA2+rB2)/2*0.9).toFixed(1)+' '+(Math.cos(hB)*rB2).toFixed(1)+' '+(Math.sin(hB)*rB2).toFixed(1)+'" fill="none" stroke="'+silk+'" stroke-width="0.6" opacity="0.35"/>';
+    }
+  }
 
   // co-occurrence silk — items actually checked in together, woven across the web
   var byName={};
