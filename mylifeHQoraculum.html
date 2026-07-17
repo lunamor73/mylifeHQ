@@ -4755,21 +4755,25 @@ function centreIcon(){
   return img?img.src:null;
 }
 
-// ── Layout: the adaptive web ────────────────────────────────────────────────
-var nodes=[], VIEW={x:0,y:0,w:1600}, aspect=1.4, svg=null;
-var R_DOM=210, R_CL=430, R_ITS=[630,735,840];
+// ── Layout: the lived web — proximity IS attention (all-time) ──────────────
+var nodes=[], VIEW={x:0,y:0,w:2100}, aspect=1.4, svg=null;
 var wbCooc={};
+var R_MIN=135, R_MAX=980;
 
 function layout(){
   nodes=[];
   var entries=getAllEntries(), now=Date.now(), D=86400000;
   var subR={},subP={},itR={},itP={};
+  var itAll={}, subAll={}, domAll={};
   wbCooc={};
   entries.forEach(function(e){
+    var d=(e.domain||'').toLowerCase(), ld=(e.lunadom||'').toLowerCase();
+    var k=(d==='lunamor'&&ld)?ld:d;
+    domAll[d]=(domAll[d]||0)+1;
+    subAll[k]=(subAll[k]||0)+1;
+    (e.items||[]).forEach(function(it){ itAll[it]=(itAll[it]||0)+1; });
     var age=now-new Date(e.ts).getTime();
     if(age<=30*D){
-      var d=(e.domain||'').toLowerCase(), ld=(e.lunadom||'').toLowerCase();
-      var k=(d==='lunamor'&&ld)?ld:d;
       var rec=age<=7*D;
       (rec?subR:subP)[k]=((rec?subR:subP)[k]||0)+1;
       (e.items||[]).forEach(function(it){ (rec?itR:itP)[it]=((rec?itR:itP)[it]||0)+1; });
@@ -4781,34 +4785,31 @@ function layout(){
     }
   });
 
-  nodes.push({id:'centre',type:'centre',label:'Penguin HQ',x:0,y:0,r:52,icon:centreIcon(),act:1});
+  var maxN=1;
+  Object.values(domAll).forEach(function(v){if(v>maxN)maxN=v;});
+  Object.values(subAll).forEach(function(v){if(v>maxN)maxN=v;});
+  Object.values(itAll).forEach(function(v){if(v>maxN)maxN=v;});
+  function radiusFor(n){
+    return R_MIN + (R_MAX-R_MIN)*(1 - Math.log(1+(n||0))/Math.log(1+maxN));
+  }
+  function hsh(s){ var v=0; for(var hi=0;hi<s.length;hi++){ v=(v*31+s.charCodeAt(hi))>>>0; } return (v%1000)/1000; }
 
-  // activity-weighted sector allocation — the web concentrates where life does
+  nodes.push({id:'centre',type:'centre',label:'Penguin HQ',x:0,y:0,r:52,icon:centreIcon(),act:1,ang:0});
+
   var totalW=0;
   WEB_WORLD.forEach(function(dom){
-    dom.clusters.forEach(function(cl){
-      var a;
-      if(dom.key==='lunamor') a=(subR[cl.key]||0)+(subP[cl.key]||0);
-      else a=cl.items.reduce(function(sm,it){return sm+(itR[it]||0)+(itP[it]||0);},0);
-      cl._act=a;
-      cl._w=cl.items.length*(1+Math.min(1,a/5)*0.9);
-      totalW+=cl._w;
-    });
+    dom.clusters.forEach(function(cl){ cl._w=cl.items.length; totalW+=cl._w; });
   });
-
-  // seeded hash for stable asymmetry — the hand-drawn wobble
-  function hsh(s){ var v=0; for(var hi=0;hi<s.length;hi++){ v=(v*31+s.charCodeAt(hi))>>>0; } return (v%1000)/1000; }
-  var angCursor=-Math.PI/2 - Math.PI/4; // domains symmetric: 4 equal quarters
+  var angCursor=-Math.PI/2 - Math.PI/4;
   WEB_WORLD.forEach(function(dom){
     var domW=0; dom.clusters.forEach(function(c){domW+=c._w;});
     var span=Math.PI/2;
-    var domAng=angCursor+span/2;
-    // golden-orb stretch: the busier the domain, the further its catching zone bellies out
-    var domScale=0.78 + (domW/totalW)*2.1;
-    var clStats=[], domAct=0;
+    var domAng=angCursor+span/2 + (hsh(dom.key)-0.5)*0.14;
+    var clStats=[], domActRecent=0;
+    var dR=radiusFor(domAll[dom.key]);
     var dnode={id:'d:'+dom.key,type:'domain',key:dom.key,label:dom.label,dom:dom.key,
-      ang:domAng, x:Math.cos(domAng)*R_DOM*Math.min(1.35,0.85+domScale*0.3), y:Math.sin(domAng)*R_DOM*Math.min(1.35,0.85+domScale*0.3), r:40, scale:domScale,
-      icon:domainIconFor(dom.key)};
+      ang:domAng, x:Math.cos(domAng)*dR, y:Math.sin(domAng)*dR, r:40,
+      icon:domainIconFor(dom.key), n:domAll[dom.key]||0};
     var cw=0;
     dom.clusters.forEach(function(cl){
       var ca=angCursor+(cw+cl._w/2)/domW*span;
@@ -4817,28 +4818,27 @@ function layout(){
       var iStats=cl.items.map(function(it){return stat(itR[it]||0,itP[it]||0);});
       var sStat = dom.key==='lunamor' ? stat(subR[cl.key]||0,subP[cl.key]||0) : bestStat(iStats);
       if(sStat==='dark') sStat=bestStat(iStats);
-      clStats.push(sStat); domAct+=cl._act;
-      var caJ=ca+(hsh(cl.key+'a')-0.5)*clSpan*0.30;
+      clStats.push(sStat);
       var clRecent = dom.key==='lunamor' ? (subR[cl.key]||0) : cl.items.reduce(function(sm,it2){return sm+(itR[it2]||0);},0);
-      var clPull = clRecent>0 ? Math.max(0.72, 1-0.07*clRecent) : 1.0;
-      var crJ=(R_CL+(hsh(cl.key+'r')-0.5)*110)*domScale*clPull;
+      domActRecent+=clRecent;
+      var clN = dom.key==='lunamor' ? (subAll[cl.key]||0) : cl.items.reduce(function(sm,it2){return sm+(itAll[it2]||0);},0);
+      var caJ=ca+(hsh(cl.key+'a')-0.5)*clSpan*0.30;
+      var cR=radiusFor(clN)*(1+(hsh(cl.key+'r')-0.5)*0.10);
       var cnode={id:'c:'+cl.key,type:'cluster',key:cl.key,label:cl.label,dom:dom.key,
-        ang:caJ, x:Math.cos(caJ)*crJ, y:Math.sin(caJ)*crJ, r:26, stat:sStat,
-        icon:clusterIconFor(cl.key,dom.key), parent:dnode, act:cl._act};
+        ang:caJ, x:Math.cos(caJ)*cR, y:Math.sin(caJ)*cR, r:26, stat:sStat,
+        icon:clusterIconFor(cl.key,dom.key), parent:dnode, act:clRecent, n:clN};
       nodes.push(cnode);
       var m=cl.items.length;
       cl.items.forEach(function(it,ii){
         var ia=ca + ((ii+0.5)/m - 0.5)*clSpan*0.94 + (hsh(it)-0.5)*(clSpan/Math.max(1,m))*0.6;
-        var recentN=itR[it]||0, priorN=itP[it]||0;
-        var pull = recentN>0 ? Math.max(0.52, 1-0.16*recentN-0.08) : (priorN>0 ? 0.90 : 1.04);
-        var rr=(R_ITS[ii%3] + (hsh(it+'r')-0.5)*85)*domScale*pull;
-        nodes.push({id:'i:'+cl.key+':'+ii,type:'item',label:it,name:it,dom:dom.key,tier:ii%3,
-          clusterKey:cl.key, ang:ia, x:Math.cos(ia)*rr, y:Math.sin(ia)*rr, r:18,
+        var iR=radiusFor(itAll[it])*(1+(hsh(it+'r')-0.5)*0.09);
+        nodes.push({id:'i:'+cl.key+':'+ii,type:'item',label:it,name:it,dom:dom.key,
+          clusterKey:cl.key, ang:ia, x:Math.cos(ia)*iR, y:Math.sin(ia)*iR, r:18,
           stat:iStats[ii], icon:itemIconFor(it), parent:cnode,
-          act:(itR[it]||0)+(itP[it]||0)});
+          act:(itR[it]||0)+(itP[it]||0), n:itAll[it]||0});
       });
     });
-    dnode.stat=bestStat(clStats); dnode.act=domAct;
+    dnode.stat=bestStat(clStats); dnode.act=domActRecent;
     nodes.push(dnode);
     angCursor+=span;
   });
@@ -4881,7 +4881,7 @@ function buildDOM(){
       th+='<line x1="'+n.parent.x.toFixed(1)+'" y1="'+n.parent.y.toFixed(1)+'" x2="'+n.x.toFixed(1)+'" y2="'+n.y.toFixed(1)+'" stroke="'+silk+'" stroke-width="'+(0.8+sw(n.act)*0.4).toFixed(1)+'" opacity="'+(n.act?0.6:0.3)+'"/>';
   });
 
-  // ── The connectors ARE the web — every strand anchored to icons ─────────
+  // ── The connectors ARE the web — rings through icons at earned radii ────
   function ringThrough(list, w0, op0){
     if(list.length<2) return;
     var sorted=list.slice().sort(function(x,y){return x.ang-y.ang;});
@@ -4892,26 +4892,19 @@ function buildDOM(){
         +'" stroke="'+silk+'" stroke-width="'+(act?w0*1.35:w0).toFixed(2)+'" opacity="'+(act?op0+0.16:op0).toFixed(2)+'"/>';
     }
   }
-  // ring through the 4 domains, ring through all 21 clusters
-  ringThrough(doNodes, 1.3, 0.5);
-  ringThrough(clNodes, 1.1, 0.46);
-  // one ring per item tier — silk passing exactly through every item icon
-  for(var t=0;t<R_ITS.length;t++){
-    (function(tier){
-      var ring=itNodes.filter(function(n){return n.tier===tier;});
-      ringThrough(ring, 0.9, 0.4);
-    })(t);
+  var ringNodes=nodes.filter(function(n){return n.type!=='centre';});
+  var byRad=ringNodes.slice().sort(function(x,y){return Math.hypot(x.x,x.y)-Math.hypot(y.x,y.y);});
+  var BANDS=7;
+  for(var bnd=0;bnd<BANDS;bnd++){
+    var lo=Math.floor(bnd*byRad.length/BANDS), hi=Math.floor((bnd+1)*byRad.length/BANDS);
+    ringThrough(byRad.slice(lo,hi), 0.9, 0.4);
   }
-  // zigzag mesh: connect consecutive items across tiers within each cluster fan
   clNodes.forEach(function(cl){
     var kids=itNodes.filter(function(n){return n.clusterKey===cl.key;}).sort(function(x,y){return x.ang-y.ang;});
     for(var z=0;z<kids.length-1;z++){
-      var A3=kids[z], B3=kids[z+1];
-      if(A3.tier===B3.tier) continue; // same tier: ring already links
-      th+='<line x1="'+A3.x.toFixed(1)+'" y1="'+A3.y.toFixed(1)+'" x2="'+B3.x.toFixed(1)+'" y2="'+B3.y.toFixed(1)+'" stroke="'+silk+'" stroke-width="0.7" opacity="0.35"/>';
+      th+='<line x1="'+kids[z].x.toFixed(1)+'" y1="'+kids[z].y.toFixed(1)+'" x2="'+kids[z+1].x.toFixed(1)+'" y2="'+kids[z+1].y.toFixed(1)+'" stroke="'+silk+'" stroke-width="0.7" opacity="0.32"/>';
     }
   });
-  // tiny hub platform where the weaver sits
   var clAngles=clNodes.map(function(n){return n.ang;}).sort(function(x,y){return x-y;});
   var S=clAngles.length;
   for(var hl=0;hl<3;hl++){
@@ -4922,6 +4915,18 @@ function buildDOM(){
       th+='<line x1="'+(Math.cos(hA)*rA2).toFixed(1)+'" y1="'+(Math.sin(hA)*rA2).toFixed(1)+'" x2="'+(Math.cos(hB)*rB2).toFixed(1)+'" y2="'+(Math.sin(hB)*rB2).toFixed(1)+'" stroke="'+silk+'" stroke-width="0.6" opacity="0.35"/>';
     }
   }
+  // ── infinity anchors — every outermost point held by silk from beyond ────
+  var BIN_N=24, bins={};
+  ringNodes.forEach(function(n){
+    var d=Math.hypot(n.x,n.y);
+    var bi=Math.floor((((n.ang%(Math.PI*2))+Math.PI*2)%(Math.PI*2))/(Math.PI*2)*BIN_N);
+    if(!bins[bi]||d>bins[bi]._d){ n._d=d; bins[bi]=n; }
+  });
+  Object.keys(bins).forEach(function(bk){
+    var n=bins[bk];
+    var d=Math.hypot(n.x,n.y)||1;
+    th+='<line x1="'+n.x.toFixed(1)+'" y1="'+n.y.toFixed(1)+'" x2="'+(n.x/d*60000).toFixed(1)+'" y2="'+(n.y/d*60000).toFixed(1)+'" stroke="'+silk+'" stroke-width="1.4" opacity="0.42"/>';
+  });
 
   // co-occurrence silk — items actually checked in together, woven across the web
   var byName={};
@@ -4935,32 +4940,6 @@ function buildDOM(){
       th+='<line x1="'+A2.x.toFixed(1)+'" y1="'+A2.y.toFixed(1)+'" x2="'+B2.x.toFixed(1)+'" y2="'+B2.y.toFixed(1)+'" stroke="#b8920f" stroke-width="'+(0.8+Math.min(2.2,p[1]*0.4)).toFixed(1)+'" opacity="0.35" stroke-dasharray="3 6"/>';
     }
   });
-
-  // ── anchor strands — long guy-lines like a golden orb web between trees ──
-  var domsByScale=doNodes.slice().sort(function(x,y){return (y.scale||1)-(x.scale||1);});
-  var big=domsByScale[0];
-  if(big){
-    // three long anchors extending from the catching zone's rim outward
-    var bigKids=itNodes.filter(function(n){return n.dom===big.key;});
-    var rim=bigKids.slice().sort(function(x,y){return Math.hypot(y.x,y.y)-Math.hypot(x.x,x.y);}).slice(0,3);
-    rim.forEach(function(n,ri){
-      var d=Math.hypot(n.x,n.y)||1;
-      var fx=n.x/d, fy=n.y/d;
-      var spread=(ri-1)*0.22;
-      var ax=Math.cos(Math.atan2(fy,fx)+spread), ay=Math.sin(Math.atan2(fy,fx)+spread);
-      var far=60000;
-      th+='<line x1="'+n.x.toFixed(1)+'" y1="'+n.y.toFixed(1)+'" x2="'+(ax*far).toFixed(1)+'" y2="'+(ay*far).toFixed(1)+'" stroke="'+silk+'" stroke-width="1.7" opacity="0.42"/>';
-    });
-    // shorter anchors on the far side — attached to nearer branches
-    doNodes.forEach(function(dn){
-      if(dn===big) return;
-      var kids2=itNodes.filter(function(n){return n.dom===dn.key;});
-      var far2=kids2.slice().sort(function(x,y){return Math.hypot(y.x,y.y)-Math.hypot(x.x,x.y);})[0];
-      if(!far2) return;
-      var d2=Math.hypot(far2.x,far2.y)||1;
-      th+='<line x1="'+far2.x.toFixed(1)+'" y1="'+far2.y.toFixed(1)+'" x2="'+(far2.x/d2*60000).toFixed(1)+'" y2="'+(far2.y/d2*60000).toFixed(1)+'" stroke="'+silk+'" stroke-width="1.3" opacity="0.35"/>';
-    });
-  }
 
   var g=document.createElementNS(NS,'g');
   g.innerHTML=th;
