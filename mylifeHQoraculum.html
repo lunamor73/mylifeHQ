@@ -4142,6 +4142,7 @@ function itemIconFor(name){
 // ── Graph state ─────────────────────────────────────────────────────────────
 var nodes=[], edges=[], nodeById={};
 var focusNode=null, alpha=0, running=false;
+var smFam={}, lastTouch=performance.now();
 var VIEW={w:3400}, aspect=1.4, svg=null;
 var elNodes=[], elEdges=[], elLabels=[];
 var spinV=0;   // angular momentum
@@ -4274,11 +4275,23 @@ function tick(){
   for(var n=0;n<nodes.length;n++){
     var nd=nodes[n];
     if(nd===focusNode){
-      // strong pull to origin
       nd.vx+=(0-nd.x)*0.12; nd.vy+=(0-nd.y)*0.12;
+    } else if(focusNode){
+      var dcen2=Math.hypot(nd.x,nd.y)||1;
+      if(smFam[nd.id]){
+        // family gathers around the focused star
+        nd.vx+=(0-nd.x)*0.0045*alpha; nd.vy+=(0-nd.y)*0.0045*alpha;
+      } else {
+        // everyone else clears to outer space — held on a far ring
+        var f2=(1650-dcen2)*0.0035*alpha;
+        nd.vx+=nd.x/dcen2*f2; nd.vy+=nd.y/dcen2*f2;
+        if((nd.grav||0)<0.35 && !nd._drag){
+          nd.vx+=(Math.random()-0.5)*0.4; nd.vy+=(Math.random()-0.5)*0.4;
+        }
+      }
+      if(dcen2>2600){ nd.vx-=nd.x/dcen2*(dcen2-2600)*0.02; nd.vy-=nd.y/dcen2*(dcen2-2600)*0.02; }
     } else {
-      // gravity: heavier stars (more check-ins, all time) fall toward the weaver
-      var gpull=(focusNode?0.0004:0.0010)+0.0085*(nd.grav||0);
+      var gpull=0.0010+0.0085*(nd.grav||0);
       nd.vx+=(0-nd.x)*gpull*alpha; nd.vy+=(0-nd.y)*gpull*alpha;
       var dcen=Math.hypot(nd.x,nd.y);
       if(dcen>2300){ nd.vx-=nd.x/dcen*(dcen-2300)*0.02; nd.vy-=nd.y/dcen*(dcen-2300)*0.02; }
@@ -4291,7 +4304,7 @@ function tick(){
   for(var m=0;m<nodes.length;m++){
     var q=nodes[m];
     if(q._drag) { q.vx=0;q.vy=0; continue; }
-    q.vx*=0.86; q.vy*=0.86;
+    q.vx*=0.90; q.vy*=0.90;
     q.x+=q.vx; q.y+=q.vy;
   }
   // spin momentum
@@ -4440,6 +4453,11 @@ function render(){
 // ── Main loop ───────────────────────────────────────────────────────────────
 function loop(){
   if(!document.getElementById('p10').classList.contains('active')){ running=false; return; }
+  // 30s of stillness: the web settles back to its resting shape
+  if(focusNode && performance.now()-lastTouch>30000){
+    focusNode=null; smFam={}; alpha=0.9; VIEW.w=3400; hideTip();
+    var cr=document.getElementById('sm-crumb'); if(cr) cr.textContent='✦ Universe';
+  }
   tick(); render();
   requestAnimationFrame(loop);
 }
@@ -4521,6 +4539,7 @@ function wire(){
   svg.addEventListener('contextmenu',function(ev){ev.preventDefault();});
   svg.addEventListener('pointerdown',function(ev){
     ev.preventDefault();
+    lastTouch=performance.now();
     svg.setPointerCapture(ev.pointerId);
     pointers[ev.pointerId]={x:ev.clientX,y:ev.clientY};
     spinV=0;
@@ -4595,12 +4614,13 @@ function wire(){
   svg.addEventListener('pointercancel',up);
   svg.addEventListener('wheel',function(ev){
     ev.preventDefault();
+    lastTouch=performance.now();
     VIEW.w=Math.max(500,Math.min(6500,VIEW.w*(ev.deltaY>0?1.1:0.9)));
   },{passive:false});
 
   var crumb=document.getElementById('sm-crumb');
   if(crumb) crumb.addEventListener('click',function(){
-    focusNode=null; alpha=1; VIEW.w=3400; hideTip();
+    focusNode=null; smFam={}; alpha=1; VIEW.w=3400; hideTip();
     crumb.textContent='✦ Universe';
   });
 }
@@ -4608,6 +4628,36 @@ function wire(){
 function setFocus(n){
   focusNode=n;
   alpha=1;
+  lastTouch=performance.now();
+  // family: the focused star's own constellation
+  smFam={}; smFam[n.id]=1;
+  if(n.type==='domain'){
+    nodes.forEach(function(m){ if(m.dom===n.key) smFam[m.id]=1; });
+  } else if(n.type==='cluster'){
+    edges.forEach(function(ed){
+      if(ed.kind==='struct'&&ed.a===n) smFam[ed.b.id]=1;
+      if(ed.kind==='struct'&&ed.b===n) smFam[ed.a.id]=1;
+    });
+  } else {
+    // item: its cluster + siblings
+    var clu=null;
+    edges.forEach(function(ed){
+      if(ed.kind==='struct'&&ed.b===n&&ed.a.type==='cluster') clu=ed.a;
+    });
+    if(clu){
+      smFam[clu.id]=1;
+      edges.forEach(function(ed){
+        if(ed.kind==='struct'&&ed.a===clu) smFam[ed.b.id]=1;
+      });
+    }
+  }
+  // pluck: impulse rings out through connected silk
+  edges.forEach(function(ed){
+    var other = ed.a===n ? ed.b : (ed.b===n ? ed.a : null);
+    if(!other) return;
+    var dx=other.x-n.x, dy=other.y-n.y, d=Math.hypot(dx,dy)||1;
+    other.vx+=dx/d*9; other.vy+=dy/d*9;
+  });
   VIEW.w = n.type==='domain' ? 2400 : (n.type==='cluster' ? 1400 : 900);
   var crumb=document.getElementById('sm-crumb');
   if(crumb) crumb.textContent='✦ '+n.label;
