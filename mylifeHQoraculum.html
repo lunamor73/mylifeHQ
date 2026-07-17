@@ -613,7 +613,7 @@
   <div class="p1-btn-row">
     <button class="p1-oracle" onclick="openInsightsWithOracle()"><span class="p1-btn-sub">Weekly</span><span class="p1-btn-main">Oraculum</span></button>
     <button class="p1-season" onclick="openSeasonReview()" id="p1-season-btn"><span class="p1-btn-sub">Seasonal</span><span class="p1-btn-main">Oraculum</span></button>
-    <button class="p1-season" onclick="openSolarYear()"><span class="p1-btn-sub">Solar Year</span><span class="p1-btn-main">Oraculum</span></button>
+    <button class="p1-season" onclick="openSolarYearFresh()"><span class="p1-btn-sub">Solar Year</span><span class="p1-btn-main">Oraculum</span></button>
   </div>
   <div class="oracle-toast" id="oracle-toast">Prompt copied — paste into Claude ✓</div>
 </div>
@@ -2586,6 +2586,7 @@ function mundusCopy() {
   </div>
   <div class="sr-body">
     <div class="sr-desc" id="sy-desc">One full turn of the sun — every season, every thread, the whole voyage since your last solar return.</div>
+    <div class="op-tabs" id="sy-tabs" style="margin-top:14px"></div>
     <div class="sr-month-label" id="sy-label"></div>
     <div id="sy-seasons" class="ins-body" style="padding:0"></div>
     <div id="sy-insights" class="ins-body" style="padding:0;margin-top:22px"></div>
@@ -5011,20 +5012,50 @@ window.openWeb = function(){
 <script>
 (function(){
 // ══ SOLAR YEAR ORACULUM — birthday to birthday (12 July) ═══════════════════
+var syOffset=0; // 0 = current solar year, 1 = last year, etc.
 function syRange(){
   var now=new Date(), yr=now.getFullYear();
   var bday=new Date(yr,6,12); // 12 July
-  var start = now>=bday ? bday : new Date(yr-1,6,12);
-  var end = new Date(start.getFullYear()+1,6,12);
-  return {start:start, end:end, now:now};
+  var curStart = now>=bday ? bday : new Date(yr-1,6,12);
+  var start=new Date(curStart.getFullYear()-syOffset,6,12);
+  var end=new Date(start.getFullYear()+1,6,12);
+  return {start:start, end:end, now:now, complete: end<=now};
 }
 function syEntries(){
   var r=syRange();
+  var cap = r.complete ? r.end : r.now;
   return srEntries(0,0,true).filter(function(e){
     var d=new Date(e.ts);
-    return d>=r.start && d<=r.now;
+    return d>=r.start && d<=cap;
   });
 }
+function syEarliestYear(){
+  var all=srEntries(0,0,true);
+  if(!all.length) return null;
+  var min=null;
+  all.forEach(function(e){var d=new Date(e.ts);if(!min||d<min)min=d;});
+  // solar year that earliest entry falls into
+  var y=min.getFullYear();
+  return (min>=new Date(y,6,12)) ? y : y-1;
+}
+function syBuildTabs(){
+  var tabs=document.getElementById('sy-tabs');
+  var now=new Date(), yr=now.getFullYear();
+  var curStartYr=(now>=new Date(yr,6,12))?yr:yr-1;
+  var minYr=syEarliestYear();
+  if(minYr===null) minYr=curStartYr;
+  var html='';
+  for(var y=curStartYr; y>=minYr; y--){
+    var off=curStartYr-y;
+    html+='<button class="op-tab'+(off===syOffset?' active':'')+'" onclick="selectSolarYear('+off+')">'
+      +(off===0?'This Year':(y+'–'+String(y+1).slice(2)))+'</button>';
+  }
+  tabs.innerHTML=html;
+}
+window.selectSolarYear=function(off){
+  syOffset=off;
+  openSolarYear();
+};
 function syPersonalYear(){
   // Personal year from numerology: shifts each birthday. 2026→Year 1 (given).
   var r=syRange();
@@ -5034,13 +5065,15 @@ function syPersonalYear(){
 }
 var PY_MEANING={1:'Seeds — new beginnings, the self re-emerges',2:'Partnership — patience, diplomacy, slow growth',3:'Expression — creativity, joy, visibility',4:'Foundation — structure, work, roots',5:'Change — freedom, movement, the unexpected',6:'Care — home, family, responsibility',7:'Depth — retreat, study, the inner voyage',8:'Harvest — power, abundance, reckoning',9:'Completion — release, forgiveness, the turning'};
 
+window.openSolarYearFresh=function(){ syOffset=0; openSolarYear(); };
 window.openSolarYear=function(){
   var r=syRange(), entries=syEntries();
   var py=syPersonalYear();
+  syBuildTabs();
   var fmt=function(d){return d.getDate()+' '+['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][d.getMonth()]+' '+d.getFullYear();};
   document.getElementById('sy-year-name').textContent='Personal Year '+py;
   document.getElementById('sy-year-range').textContent=fmt(r.start)+' → '+fmt(r.end);
-  document.getElementById('sy-label').textContent=entries.length+' check-in'+(entries.length!==1?'s':'')+' since solar return';
+  document.getElementById('sy-label').textContent=entries.length+' check-in'+(entries.length!==1?'s':'')+(r.complete?' — completed year':' since solar return');
   // season-by-season arc
   var sh='<div class="ins-section"><div class="ins-h">The seasons of this year</div><div class="ins-bars">';
   var counts=SEASONS.map(function(s){
@@ -5099,7 +5132,7 @@ window.generateSolarOracle=function(){
     .map(function(p){return p[0]+' ('+p[1]+'×)';}).join(', ');
 
   var prompt='PENGUIN SOLAR YEAR ORACLE REQUEST\n'
-    +'Solar year: '+fmt(r.start)+' → '+fmt(r.end)+' (in progress, today '+fmt(now)+')\n'
+    +'Solar year: '+fmt(r.start)+' → '+fmt(r.end)+(r.complete?' (COMPLETED year — a full turn of the sun)':' (in progress, today '+fmt(now)+')')+'\n'
     +'Personal Year '+py+': '+(PY_MEANING[py]||'')+'\n\n'
     +'PROFILE:\n'
     +'- Cancer Sun 19° · Capricorn Rising · Sagittarius Moon 14°\n'
@@ -5118,7 +5151,7 @@ window.generateSolarOracle=function(){
     +'3. HARVEST — Goals achieved, capacities grown, highlights worth naming and celebrating. Be specific from the data.\n\n'
     +'4. ADAPTATIONS — Where did the web change shape? What emerged mid-year that was not there at the start, and what does that reveal?\n\n'
     +'5. RELEASED — What went quiet? Distinguish between what was completed, what was let go wisely, and what may be calling to be picked back up.\n\n'
-    +'6. THE REMAINING ARC — What does the rest of this solar year ask for, given everything above and what this season on this country is calling for?';
+    +(r.complete?'6. THE YEAR\'S TEACHING — Looking back on this completed turn of the sun: what was its central teaching, and what did it hand forward to the year that followed?':'6. THE REMAINING ARC — What does the rest of this solar year ask for, given everything above and what this season on this country is calling for?');
 
   var toast=document.getElementById('sy-toast');
   function show(){toast.textContent='Solar Year Oracle copied — paste into Claude ✓';toast.style.opacity='1';setTimeout(function(){toast.style.opacity='0';},3000);}
