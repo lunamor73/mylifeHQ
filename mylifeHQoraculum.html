@@ -4152,8 +4152,14 @@ function buildGraph(){
   var now=Date.now(), D=86400000;
   var subR={},subP={},itR={},itP={};
   var cooc={};
+  var itAll={}, subAll={}, domAll={};
   entries.forEach(function(e){
     var age=now-new Date(e.ts).getTime();
+    var dA=(e.domain||'').toLowerCase(), ldA=(e.lunadom||'').toLowerCase();
+    var kA=(dA==='lunamor'&&ldA)?ldA:dA;
+    domAll[dA]=(domAll[dA]||0)+1;
+    subAll[kA]=(subAll[kA]||0)+1;
+    (e.items||[]).forEach(function(it){ itAll[it]=(itAll[it]||0)+1; });
     if(age<=30*D){
       var d=(e.domain||'').toLowerCase(), ld=(e.lunadom||'').toLowerCase();
       var k=(d==='lunamor'&&ld)?ld:d;
@@ -4198,6 +4204,26 @@ function buildGraph(){
       cl._stat=sStat;
     });
     dnode.stat=bestStat(clStats);
+  });
+
+  // gravity weights — devotion decides mass
+  var maxN=1;
+  Object.values(domAll).forEach(function(v){if(v>maxN)maxN=v;});
+  Object.values(subAll).forEach(function(v){if(v>maxN)maxN=v;});
+  Object.values(itAll).forEach(function(v){if(v>maxN)maxN=v;});
+  nodes.forEach(function(n){
+    var cnt=0;
+    if(n.type==='domain') cnt=domAll[n.key]||0;
+    else if(n.type==='cluster') cnt=(n.key.indexOf('luna')===0?(subAll[n.key]||0):0);
+    else if(n.type==='item') cnt=itAll[n.name]||0;
+    if(n.type==='cluster' && cnt===0){
+      // non-luna clusters: sum of their items
+      edges.forEach(function(ed){
+        if(ed.kind==='struct'&&ed.a===n&&ed.b.type==='item') cnt+=itAll[ed.b.name]||0;
+      });
+    }
+    n.n=cnt;
+    n.grav=Math.log(1+cnt)/Math.log(1+maxN);
   });
 
   // same-name bridges (e.g. SlapDanceSing in LUNAVĀ + WELLBEING Movement)
@@ -4250,10 +4276,15 @@ function tick(){
     if(nd===focusNode){
       // strong pull to origin
       nd.vx+=(0-nd.x)*0.12; nd.vy+=(0-nd.y)*0.12;
-    } else if(!focusNode){
-      nd.vx+=(0-nd.x)*0.0018*alpha; nd.vy+=(0-nd.y)*0.0018*alpha;
     } else {
-      nd.vx+=(0-nd.x)*0.0006*alpha; nd.vy+=(0-nd.y)*0.0006*alpha;
+      // gravity: heavier stars (more check-ins, all time) fall toward the weaver
+      var gpull=(focusNode?0.0004:0.0010)+0.0085*(nd.grav||0);
+      nd.vx+=(0-nd.x)*gpull*alpha; nd.vy+=(0-nd.y)*gpull*alpha;
+      var dcen=Math.hypot(nd.x,nd.y);
+      if(dcen>2300){ nd.vx-=nd.x/dcen*(dcen-2300)*0.02; nd.vy-=nd.y/dcen*(dcen-2300)*0.02; }
+      if((nd.grav||0)<0.35 && !nd._drag){
+        nd.vx+=(Math.random()-0.5)*0.55; nd.vy+=(Math.random()-0.5)*0.55;
+      }
     }
   }
   // integrate
