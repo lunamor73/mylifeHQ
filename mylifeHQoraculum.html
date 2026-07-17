@@ -4871,38 +4871,40 @@ function buildDOM(){
       th+='<line x1="'+n.parent.x.toFixed(1)+'" y1="'+n.parent.y.toFixed(1)+'" x2="'+n.x.toFixed(1)+'" y2="'+n.y.toFixed(1)+'" stroke="'+silk+'" stroke-width="'+(0.8+sw(n.act)*0.4).toFixed(1)+'" opacity="'+(n.act?0.6:0.3)+'"/>';
   });
 
-  // ring silk THROUGH the icons — adjacent domains, clusters, items
-  for(var d0=0;d0<doNodes.length;d0++){
-    var A=doNodes[d0], B=doNodes[(d0+1)%doNodes.length];
-    th+='<path d="'+sagPts(A.x,A.y,B.x,B.y,0.10)+'" fill="none" stroke="'+silk+'" stroke-width="1.4" opacity="0.4"/>';
-  }
-  for(var c0=0;c0<clNodes.length;c0++){
-    var C=clNodes[c0], Dn=clNodes[(c0+1)%clNodes.length];
-    var w2=1+Math.min(2,((C.act||0)+(Dn.act||0))*0.18);
-    th+='<path d="'+sagPts(C.x,C.y,Dn.x,Dn.y,0.07)+'" fill="none" stroke="'+silk+'" stroke-width="'+w2.toFixed(1)+'" opacity="'+((C.act||Dn.act)?0.55:0.3)+'"/>';
-  }
-  // continuous outer capture spiral through every item icon
-  for(var i0=0;i0<itNodes.length;i0++){
-    var I=itNodes[i0], J=itNodes[(i0+1)%itNodes.length];
-    var w3=0.7+Math.min(2,((I.act||0)+(J.act||0))*0.25);
-    th+='<path d="'+sagPts(I.x,I.y,J.x,J.y,0.05)+'" fill="none" stroke="'+silk+'" stroke-width="'+w3.toFixed(1)+'" opacity="'+((I.act||J.act)?0.6:0.32)+'"/>';
-  }
-
-  // extra capture strands ONLY where the web is busy — spiders build where prey lands
-  clNodes.forEach(function(cl){
-    if(!cl.act) return;
-    var kids=itNodes.filter(function(n){return n.clusterKey===cl.key;});
-    if(!kids.length) return;
-    var a0=Math.min.apply(null,kids.map(function(n){return n.ang;}));
-    var a1x=Math.max.apply(null,kids.map(function(n){return n.ang;}));
-    var strands=Math.min(4,1+Math.floor(cl.act/2));
-    for(var st=0;st<strands;st++){
-      var rr=R_CL+70+(st+1)*(R_ITS[0]-R_CL-70)/(strands+1);
-      var x1=Math.cos(a0)*rr, y1=Math.sin(a0)*rr;
-      var x2=Math.cos(a1x)*rr, y2=Math.sin(a1x)*rr;
-      th+='<path d="'+sagPts(x1,y1,x2,y2,0.06)+'" fill="none" stroke="'+silk+'" stroke-width="1" opacity="0.45"/>';
-    }
+  // ── The web proper — modelled on the LUNAWĀN icon ────────────────────────
+  // strong radial spokes, tight hub spiral, free zone, then dense capture spiral
+  var clAngles=clNodes.map(function(n){return n.ang;}).sort(function(x,y){return x-y;});
+  var S=clAngles.length;
+  function jit(i,l){ var v=Math.sin(i*127.3+l*311.7)*43758.5453; return (v-Math.floor(v)-0.5); }
+  var sectorAct=clAngles.map(function(a2){
+    var best=0; clNodes.forEach(function(cn){ if(Math.abs(cn.ang-a2)<0.01) best=cn.act||0; });
+    return best;
   });
+  // spokes — hub to rim
+  clAngles.forEach(function(a2,si){
+    var wob=jit(si,99)*0.012;
+    var x2=Math.cos(a2+wob)*930, y2=Math.sin(a2+wob)*930;
+    th+='<line x1="'+(Math.cos(a2)*16).toFixed(1)+'" y1="'+(Math.sin(a2)*16).toFixed(1)+'" x2="'+x2.toFixed(1)+'" y2="'+y2.toFixed(1)+'" stroke="'+silk+'" stroke-width="1.4" opacity="0.55"/>';
+  });
+  // spiral builder: continuous laps climbing outward, slight sag + wobble
+  function spiral(startR, spacing, laps, w0, op0){
+    for(var l=0;l<laps;l++){
+      for(var i2=0;i2<S;i2++){
+        var aA=clAngles[i2], aB=clAngles[(i2+1)%S];
+        if(i2===S-1) aB+=Math.PI*2;
+        var rA=startR+(l+i2/S)*spacing + jit(i2,l)*spacing*0.30;
+        var rB=startR+(l+(i2+1)/S)*spacing + jit((i2+1)%S,l)*spacing*0.30;
+        var act=Math.max(sectorAct[i2],sectorAct[(i2+1)%S]);
+        var xa=Math.cos(aA)*rA, ya=Math.sin(aA)*rA;
+        var xb=Math.cos(aB)*rB, yb=Math.sin(aB)*rB;
+        var mx=(xa+xb)/2*0.955, my=(ya+yb)/2*0.955;
+        th+='<path d="M'+xa.toFixed(1)+' '+ya.toFixed(1)+' Q'+mx.toFixed(1)+' '+my.toFixed(1)+' '+xb.toFixed(1)+' '+yb.toFixed(1)
+          +'" fill="none" stroke="'+silk+'" stroke-width="'+(act?w0*1.35:w0).toFixed(2)+'" opacity="'+(act?op0+0.15:op0).toFixed(2)+'"/>';
+      }
+    }
+  }
+  spiral(20, 11, 6, 0.7, 0.42);      // tight hub
+  spiral(165, 33, 22, 0.85, 0.36);   // dense capture spiral (free zone 86–165 left open)
 
   // co-occurrence silk — items actually checked in together, woven across the web
   var byName={};
