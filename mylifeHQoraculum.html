@@ -613,6 +613,7 @@
   <div class="p1-btn-row">
     <button class="p1-oracle" onclick="openInsightsWithOracle()"><span class="p1-btn-sub">Weekly</span><span class="p1-btn-main">Oraculum</span></button>
     <button class="p1-season" onclick="openSeasonReview()" id="p1-season-btn"><span class="p1-btn-sub">Seasonal</span><span class="p1-btn-main">Oraculum</span></button>
+    <button class="p1-season" onclick="openSolarYear()"><span class="p1-btn-sub">Solar Year</span><span class="p1-btn-main">Oraculum</span></button>
   </div>
   <div class="oracle-toast" id="oracle-toast">Prompt copied — paste into Claude ✓</div>
 </div>
@@ -2571,6 +2572,28 @@ function mundusCopy() {
   </div>
 </div>
 
+<!-- == P12: SOLAR YEAR ORACULUM == -->
+<div id="p12" class="page">
+  <div class="top-bar">
+    <button class="back-btn" onclick="nav('p1')">&#8592; Back</button>
+    <div style="width:60px"></div>
+  </div>
+  <div class="sr-header">
+    <div class="sr-h-weekly">Solar Year</div>
+    <div class="sr-h-oraculum">Oraculum</div>
+    <div class="sr-h-season" id="sy-year-name">—</div>
+    <div class="sr-h-range" id="sy-year-range"></div>
+  </div>
+  <div class="sr-body">
+    <div class="sr-desc" id="sy-desc">One full turn of the sun — every season, every thread, the whole voyage since your last solar return.</div>
+    <div class="sr-month-label" id="sy-label"></div>
+    <div id="sy-seasons" class="ins-body" style="padding:0"></div>
+    <div id="sy-insights" class="ins-body" style="padding:0;margin-top:22px"></div>
+    <button class="sr-oracle-btn" onclick="generateSolarOracle()">Generate Solar Year Oracle</button>
+    <div class="sr-toast" id="sy-toast"></div>
+  </div>
+</div>
+
 <!-- == P8: SEASON REVIEW == -->
 <style>
 .p1-season{width:200px;padding:10px 28px;border-radius:12px;border:1.5px solid var(--muted);background:transparent;color:var(--muted);font-size:11px;font-weight:600;letter-spacing:1.5px;cursor:pointer;display:block;text-transform:uppercase;transition:all 0.15s}
@@ -2613,15 +2636,7 @@ function mundusCopy() {
     <div class="sr-desc" id="sr-desc"></div>
     <div class="sr-call" id="sr-call"></div>
     <div class="sr-month-label" id="sr-month-label"></div>
-    <div class="sr-section-label">Domain Activity</div>
-    <div id="sr-domains"></div>
-    <div class="sr-section-label">Zone Distribution</div>
-    <div id="sr-zones"></div>
-    <div class="sr-section-label">Feeling Tides</div>
-    <div id="sr-tides"></div>
-    <div class="sr-section-label">Exchange</div>
-    <div id="sr-exchange"></div>
-    <div class="sr-total" id="sr-total"></div>
+    <div id="sr-insights" class="ins-body" style="padding:0"></div>
     <button class="sr-oracle-btn" onclick="generateSeasonOracle()">Generate Season Oracle</button>
     <div class="sr-toast" id="sr-toast"></div>
   </div>
@@ -3554,7 +3569,7 @@ function srSeason() {
   var m = new Date().getMonth();
   return SEASONS.find(function(s){ return s.months.indexOf(m) > -1; }) || SEASONS[0];
 }
-function srEntries(year, month) {
+function srEntries(year, month, allMode) {
   var hist=[], arch=[];
   try{ hist = JSON.parse(localStorage.getItem('phq-history')||'[]'); }catch(e){}
   try{ arch = JSON.parse(localStorage.getItem('phq-insight-archive')||'[]'); }catch(e){}
@@ -3565,7 +3580,7 @@ function srEntries(year, month) {
     if(!ts||ts==='null'||ts==='undefined') return false;
     var d = new Date(ts);
     if(isNaN(d.getTime())) return false;
-    if(d.getFullYear()!==year || d.getMonth()!==month) return false;
+    if(!allMode && (d.getFullYear()!==year || d.getMonth()!==month)) return false;
     var k = String(e.id||e.ts);
     if(seen[k]) return false;
     seen[k]=1; return true;
@@ -3588,38 +3603,100 @@ function srRows(elId, counts, defColor, colorMap) {
   }).join('');
 }
 function openSeasonReview(){ buildSeasonReview(); nav('p8'); }
+// ── Season-scoped entries (all months of current season, last 12 months) ──
+function srSeasonEntries(){
+  var s=srSeason(), now=Date.now(), yearMs=366*86400000;
+  var all=srEntries(9999,-1,true);
+  return all.filter(function(e){
+    var d=new Date(e.ts);
+    return s.months.indexOf(d.getMonth())>-1 && (now-d.getTime())<yearMs;
+  });
+}
+// ── Shared insights-style renderer (icons + cards, same as Weekly) ────────
+function oiDomainIcon(key){
+  var alt={lunamor:'LUNAMOR',family:'Family',wellbeing:'Wellbeing',home:'Home'}[key];
+  var img=document.querySelector('#p2 .d-tile img[alt="'+alt+'"]');
+  return img?img.src:'';
+}
+function oiInsightsHTML(entries){
+  if(!entries.length) return '<div class="ins-empty">No check-ins in this window yet.</div>';
+  var esc=function(t){return String(t).replace(/&/g,'&amp;').replace(/</g,'&lt;');};
+  var tm=entries.reduce(function(a,e){return a+(e.timeMins||0);},0);
+  var dayKeys={}; entries.forEach(function(e){dayKeys[String(e.ts).slice(0,10)]=1;});
+  var days=Object.keys(dayKeys).length;
+  var tmStr = tm>=60 ? Math.floor(tm/60)+'<span class="unit">h</span>' : tm+'<span class="unit">m</span>';
+  var h='<div class="ins-section"><div class="ins-h">Overview</div><div class="ins-stats">'
+    +'<div class="ins-stat accent"><div class="ins-stat-num">'+entries.length+'</div><div class="ins-stat-lbl">Check-ins</div></div>'
+    +'<div class="ins-stat"><div class="ins-stat-num">'+days+'</div><div class="ins-stat-lbl">Days active</div></div>'
+    +'<div class="ins-stat"><div class="ins-stat-num">'+tmStr+'</div><div class="ins-stat-lbl">Time logged</div></div>'
+    +'<div class="ins-stat accent"><div class="ins-stat-num">'+Math.round(entries.length/Math.max(1,days)*10)/10+'</div><div class="ins-stat-lbl">Per day</div></div>'
+    +'</div></div>';
+  // domain balance
+  var dc={};
+  entries.forEach(function(e){
+    var key=e.lunadom?'lunamor':((e.domain||'unknown').toLowerCase());
+    dc[key]=(dc[key]||0)+1;
+  });
+  var names={lunamor:'LUNAMOR',family:'Family',wellbeing:'Wellbeing',home:'Home'};
+  var ds=Object.entries(dc).sort(function(a,b){return b[1]-a[1];});
+  var mx=ds[0]?ds[0][1]:1;
+  h+='<div class="ins-section"><div class="ins-h">Domain balance</div><div class="ins-bars">';
+  ds.forEach(function(p){
+    var ic=oiDomainIcon(p[0]);
+    h+='<div class="ins-bar-row"><div class="ins-bar-icon">'+(ic?'<img src="'+ic+'">':'')+'</div>'
+      +'<div class="ins-bar-track"><div class="ins-bar-fill" style="width:'+Math.round(p[1]/mx*100)+'%"></div><div class="ins-bar-name">'+esc(names[p[0]]||p[0])+'</div></div>'
+      +'<div class="ins-bar-val">'+p[1]+'</div></div>';
+  });
+  h+='</div></div>';
+  // most touched
+  var ic2={}, cnt={};
+  entries.forEach(function(e){(e.items||[]).forEach(function(it){
+    cnt[it]=(cnt[it]||0)+1;
+    if(!ic2[it]){ try{ ic2[it]=findItemIcon(it); }catch(err){ ic2[it]=''; } }
+  });});
+  var top=Object.entries(cnt).sort(function(a,b){return b[1]-a[1];}).slice(0,6);
+  if(top.length){
+    h+='<div class="ins-section"><div class="ins-h">Most touched</div><div class="ins-items">';
+    top.forEach(function(p){
+      h+='<div class="ins-item"><div class="ins-item-icon">'+(ic2[p[0]]?'<img src="'+ic2[p[0]]+'">':'')+'</div>'
+        +'<div class="ins-item-name">'+esc(p[0])+'</div><div class="ins-item-count">'+p[1]+'×</div></div>';
+    });
+    h+='</div></div>';
+  }
+  // rhythm by day
+  var dow=[0,0,0,0,0,0,0];
+  entries.forEach(function(e){dow[new Date(e.ts).getDay()]++;});
+  var mxd=Math.max.apply(null,dow.concat([1]));
+  var ORDER=[1,2,3,4,5,6,0], SHORT=['S','M','T','W','T','F','S'];
+  h+='<div class="ins-section"><div class="ins-h">Rhythm by day</div><div class="ins-dow">';
+  ORDER.forEach(function(ix){
+    var cv=dow[ix], hh=cv?Math.max(8,cv/mxd*78):4;
+    h+='<div class="ins-dow-col"><div class="ins-dow-val">'+(cv||'·')+'</div>'
+      +'<div class="ins-dow-bar'+(cv?'':' empty')+'" style="height:'+hh+'px"></div>'
+      +'<div class="ins-dow-lbl">'+SHORT[ix]+'</div></div>';
+  });
+  h+='</div></div>';
+  return h;
+}
 function buildSeasonReview(){
-  var now=new Date(), yr=now.getFullYear(), mo=now.getMonth();
-  var s=srSeason(), entries=srEntries(yr,mo);
-  var mn=now.toLocaleString('default',{month:'long'});
+  var now=new Date(), yr=now.getFullYear();
+  var s=srSeason(), entries=srSeasonEntries();
   document.getElementById('sr-season-name').textContent=s.name;
   var MN=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
   var ms=s.months.slice().sort(function(a,b){return a-b;});
   var rangeStr;
-  if(ms[ms.length-1]-ms[0]>6){var gap=-1;for(var i=0;i<ms.length-1;i++){if(ms[i+1]-ms[i]>1){gap=i;break;}}rangeStr=gap>=0?MN[ms[gap+1]]+' – '+MN[ms[gap]]:MN[ms[0]]+' – '+MN[ms[ms.length-1]];}else{rangeStr=MN[ms[0]]+' – '+MN[ms[ms.length-1]];}
+  if(ms[ms.length-1]-ms[0]>6){var gap=-1;for(var gi=0;gi<ms.length-1;gi++){if(ms[gi+1]-ms[gi]>1){gap=gi;break;}}rangeStr=gap>=0?MN[ms[gap+1]]+' – '+MN[ms[gap]]:MN[ms[0]]+' – '+MN[ms[ms.length-1]];}else{rangeStr=MN[ms[0]]+' – '+MN[ms[ms.length-1]];}
   document.getElementById('sr-season-range').textContent=rangeStr;
   document.getElementById('sr-country').textContent=s.language;
   document.getElementById('sr-desc').textContent=s.character;
   document.getElementById('sr-call').textContent='↬ '+s.call;
-  document.getElementById('sr-month-label').textContent=mn+' '+yr+' · '+entries.length+' check-in'+(entries.length!==1?'s':'');
-  // p1 season label removed 'Seasonal Oracle'
-  if(!entries.length){
-    ['sr-domains','sr-zones','sr-tides','sr-exchange'].forEach(function(id){
-      document.getElementById(id).innerHTML='<div class="sr-empty">No entries this month yet</div>';
-    });
-    document.getElementById('sr-total').textContent=''; return;
-  }
-  var zc={'Cruising':'#88aaff','Stretching':'#ffcc44','In Flow':'#44ddaa','Overload':'#ff6655','Underload':'#aaaaaa'};
-  srRows('sr-domains',srCount(entries,'lunadom'),'var(--gold)',null);
-  srRows('sr-zones',  srCount(entries,'zpd'),    'var(--gold)',zc);
-  srRows('sr-tides',  srCount(entries,'direction'),'#8899cc',null);
-  srRows('sr-exchange',srCount(entries,'exchange'),'#99bb88',null);
-  var tm=entries.reduce(function(a,e){return a+(e.timeMins||0);},0);
-  document.getElementById('sr-total').textContent='Total logged time: '+(tm>=60?Math.floor(tm/60)+'h ':'')+tm%60+'m';
+  document.getElementById('sr-month-label').textContent=s.name+' '+yr+' · '+entries.length+' check-in'+(entries.length!==1?'s':'');
+  document.getElementById('sr-insights').innerHTML=oiInsightsHTML(entries);
 }
+
 function generateSeasonOracle(){
   var now=new Date(), yr=now.getFullYear(), mo=now.getMonth();
-  var s=srSeason(), entries=srEntries(yr,mo);
+  var s=srSeason(), entries=srSeasonEntries();
   var mn=now.toLocaleString('default',{month:'long'});
   var tm=entries.reduce(function(a,e){return a+(e.timeMins||0);},0);
 
@@ -4929,5 +5006,127 @@ window.openWeb = function(){
 };
 })();
 
+</script>
+
+<script>
+(function(){
+// ══ SOLAR YEAR ORACULUM — birthday to birthday (12 July) ═══════════════════
+function syRange(){
+  var now=new Date(), yr=now.getFullYear();
+  var bday=new Date(yr,6,12); // 12 July
+  var start = now>=bday ? bday : new Date(yr-1,6,12);
+  var end = new Date(start.getFullYear()+1,6,12);
+  return {start:start, end:end, now:now};
+}
+function syEntries(){
+  var r=syRange();
+  return srEntries(0,0,true).filter(function(e){
+    var d=new Date(e.ts);
+    return d>=r.start && d<=r.now;
+  });
+}
+function syPersonalYear(){
+  // Personal year from numerology: shifts each birthday. 2026→Year 1 (given).
+  var r=syRange();
+  var base=2026, baseYear=1;
+  var n=(r.start.getFullYear()-base)+baseYear;
+  return ((n-1)%9)+1;
+}
+var PY_MEANING={1:'Seeds — new beginnings, the self re-emerges',2:'Partnership — patience, diplomacy, slow growth',3:'Expression — creativity, joy, visibility',4:'Foundation — structure, work, roots',5:'Change — freedom, movement, the unexpected',6:'Care — home, family, responsibility',7:'Depth — retreat, study, the inner voyage',8:'Harvest — power, abundance, reckoning',9:'Completion — release, forgiveness, the turning'};
+
+window.openSolarYear=function(){
+  var r=syRange(), entries=syEntries();
+  var py=syPersonalYear();
+  var fmt=function(d){return d.getDate()+' '+['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][d.getMonth()]+' '+d.getFullYear();};
+  document.getElementById('sy-year-name').textContent='Personal Year '+py;
+  document.getElementById('sy-year-range').textContent=fmt(r.start)+' → '+fmt(r.end);
+  document.getElementById('sy-label').textContent=entries.length+' check-in'+(entries.length!==1?'s':'')+' since solar return';
+  // season-by-season arc
+  var sh='<div class="ins-section"><div class="ins-h">The seasons of this year</div><div class="ins-bars">';
+  var counts=SEASONS.map(function(s){
+    return entries.filter(function(e){return s.months.indexOf(new Date(e.ts).getMonth())>-1;}).length;
+  });
+  var mx=Math.max.apply(null,counts.concat([1]));
+  SEASONS.forEach(function(s,si){
+    sh+='<div class="ins-bar-row"><div class="ins-bar-icon" style="display:flex;align-items:center;justify-content:center;font-size:13px">☀</div>'
+      +'<div class="ins-bar-track"><div class="ins-bar-fill" style="width:'+Math.round(counts[si]/mx*100)+'%"></div><div class="ins-bar-name">'+s.name+'</div></div>'
+      +'<div class="ins-bar-val">'+counts[si]+'</div></div>';
+  });
+  sh+='</div></div>';
+  document.getElementById('sy-seasons').innerHTML=sh;
+  document.getElementById('sy-insights').innerHTML=oiInsightsHTML(entries);
+  nav('p12');
+};
+
+window.generateSolarOracle=function(){
+  var r=syRange(), entries=syEntries(), py=syPersonalYear();
+  var now=new Date();
+  var tm=entries.reduce(function(a,e){return a+(e.timeMins||0);},0);
+  var fmt=function(d){return d.getDate()+' '+['January','February','March','April','May','June','July','August','September','October','November','December'][d.getMonth()]+' '+d.getFullYear();};
+
+  // per-season summaries
+  var seasonBlocks=SEASONS.map(function(s){
+    var se=entries.filter(function(e){return s.months.indexOf(new Date(e.ts).getMonth())>-1;});
+    if(!se.length) return s.name.toUpperCase()+': quiet — no check-ins recorded.';
+    var items={};
+    se.forEach(function(e){(e.items||[]).forEach(function(it){items[it]=(items[it]||0)+1;});});
+    var top=Object.entries(items).sort(function(a,b){return b[1]-a[1];}).slice(0,5)
+      .map(function(p){return p[0]+' ('+p[1]+')';}).join(', ');
+    var doms={};
+    se.forEach(function(e){var k=e.lunadom||e.domain;doms[k]=(doms[k]||0)+1;});
+    var dstr=Object.entries(doms).sort(function(a,b){return b[1]-a[1];}).slice(0,4)
+      .map(function(p){return p[0]+' ('+p[1]+')';}).join(', ');
+    return s.name.toUpperCase()+' ('+se.length+' check-ins): domains — '+dstr+'. Most alive: '+top+'.';
+  }).join('\n');
+
+  // emerged vs released
+  var half=new Date((r.start.getTime()+now.getTime())/2);
+  var d60=new Date(now.getTime()-60*86400000);
+  var firstSeen={}, lastSeen={};
+  entries.forEach(function(e){
+    var d=new Date(e.ts);
+    (e.items||[]).forEach(function(it){
+      if(!firstSeen[it]||d<firstSeen[it]) firstSeen[it]=d;
+      if(!lastSeen[it]||d>lastSeen[it]) lastSeen[it]=d;
+    });
+  });
+  var released=Object.keys(firstSeen).filter(function(it){return firstSeen[it]<half && lastSeen[it]<d60;});
+  var emerged=Object.keys(firstSeen).filter(function(it){return firstSeen[it]>=half;});
+
+  var counts={};
+  entries.forEach(function(e){(e.items||[]).forEach(function(it){counts[it]=(counts[it]||0)+1;});});
+  var top10=Object.entries(counts).sort(function(a,b){return b[1]-a[1];}).slice(0,10)
+    .map(function(p){return p[0]+' ('+p[1]+'×)';}).join(', ');
+
+  var prompt='PENGUIN SOLAR YEAR ORACLE REQUEST\n'
+    +'Solar year: '+fmt(r.start)+' → '+fmt(r.end)+' (in progress, today '+fmt(now)+')\n'
+    +'Personal Year '+py+': '+(PY_MEANING[py]||'')+'\n\n'
+    +'PROFILE:\n'
+    +'- Cancer Sun 19° · Capricorn Rising · Sagittarius Moon 14°\n'
+    +'- HD: Manifesting Generator 5/2 · Emotional Authority · Channels 53-42 / 32-54 / 63-4\n'
+    +'- Mayan: White Rhythmic Dog (Kin 6) · Flow Goer + Deep Thinker · Water Ox\n'
+    +'- Country: Bribie Island / Sunshine Coast / Northern NSW — Bandjalang seasonal round\n\n'
+    +'THE YEAR SO FAR ('+entries.length+' check-ins · '+Math.floor(tm/60)+'h '+(tm%60)+'m logged):\n\n'
+    +'SEASON BY SEASON:\n'+seasonBlocks+'\n\n'
+    +'MOST LIVED (whole year): '+(top10||'—')+'\n\n'
+    +'EMERGED IN THE SECOND HALF (adaptations, new growth): '+(emerged.length?emerged.join(', '):'—')+'\n\n'
+    +'GONE QUIET (active early, silent for 60+ days — possibly released): '+(released.length?released.join(', '):'—')+'\n\n'
+    +'---\n'
+    +'You are the Penguin Oracle. This is the SOLAR YEAR reading — the longest lens, one full turn of the sun since the solar return.\n\n'
+    +'1. YEAR PORTRAIT — What kind of year has this been, in the language of Personal Year '+py+'? What is the shape of the whole voyage so far?\n\n'
+    +'2. THE SEASONS\' STORY — Walk the seasons in order. How did the energy move — what did each season plant, ripen, or strip away?\n\n'
+    +'3. HARVEST — Goals achieved, capacities grown, highlights worth naming and celebrating. Be specific from the data.\n\n'
+    +'4. ADAPTATIONS — Where did the web change shape? What emerged mid-year that was not there at the start, and what does that reveal?\n\n'
+    +'5. RELEASED — What went quiet? Distinguish between what was completed, what was let go wisely, and what may be calling to be picked back up.\n\n'
+    +'6. THE REMAINING ARC — What does the rest of this solar year ask for, given everything above and what this season on this country is calling for?';
+
+  var toast=document.getElementById('sy-toast');
+  function show(){toast.textContent='Solar Year Oracle copied — paste into Claude ✓';toast.style.opacity='1';setTimeout(function(){toast.style.opacity='0';},3000);}
+  if(navigator.clipboard&&navigator.clipboard.writeText){
+    navigator.clipboard.writeText(prompt).then(show).catch(function(){fb();});
+  } else fb();
+  function fb(){var ta=document.createElement('textarea');ta.value=prompt;document.body.appendChild(ta);ta.select();document.execCommand('copy');document.body.removeChild(ta);show();}
+};
+})();
 </script>
 </body>
