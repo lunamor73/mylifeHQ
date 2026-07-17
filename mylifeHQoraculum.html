@@ -612,8 +612,8 @@
   </div>
   <div class="p1-btn-row">
     <button class="p1-oracle" onclick="openInsightsWithOracle()"><span class="p1-btn-sub">Weekly</span><span class="p1-btn-main">Oraculum</span></button>
-    <button class="p1-season" onclick="openSeasonReview()" id="p1-season-btn"><span class="p1-btn-sub">Seasonal</span><span class="p1-btn-main">Oraculum</span></button>
-    <button class="p1-season" onclick="openSolarYearFresh()"><span class="p1-btn-sub">Solar Year</span><span class="p1-btn-main">Oraculum</span></button>
+    <button class="p1-season p1-season-teal" onclick="openSeasonReview()" id="p1-season-btn"><span class="p1-btn-sub">Seasonal</span><span class="p1-btn-main">Oraculum</span></button>
+    <button class="p1-season p1-solar-amber" onclick="openSolarYearFresh()"><span class="p1-btn-sub">Solar Year</span><span class="p1-btn-main">Oraculum</span></button>
   </div>
   <div class="oracle-toast" id="oracle-toast">Prompt copied — paste into Claude ✓</div>
 </div>
@@ -2599,6 +2599,10 @@ function mundusCopy() {
 <style>
 .p1-season{width:200px;padding:10px 28px;border-radius:12px;border:1.5px solid var(--muted);background:transparent;color:var(--muted);font-size:11px;font-weight:600;letter-spacing:1.5px;cursor:pointer;display:block;text-transform:uppercase;transition:all 0.15s}
 .p1-season:active{border-color:var(--gold);color:var(--gold)}
+.p1-season-teal{border:1.5px solid #2f8a7a;background:rgba(47,138,122,0.10);color:#2f8a7a}
+.p1-season-teal:active{background:#2f8a7a;color:#fff}
+.p1-solar-amber{border:1.5px solid #a06010;background:rgba(160,96,16,0.10);color:#a06010}
+.p1-solar-amber:active{background:#a06010;color:#fff}
 .sr-body{padding:20px 24px 120px;overflow-y:auto;height:calc(100% - 56px)}
 .sr-header{text-align:center;padding:12px 0 4px;border-bottom:1px solid rgba(255,255,255,0.08);margin-bottom:4px}
 .sr-h-weekly{font-size:10px;letter-spacing:0.18em;text-transform:uppercase;opacity:0.45;font-weight:600}
