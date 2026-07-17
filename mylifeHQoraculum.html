@@ -5028,16 +5028,23 @@ function buildDOM(){
     t.setAttribute('class','wb-lbl wb-lbl-'+n.type);
     svg.appendChild(t);
   });
+  _lblI=null; _lblC=null; _lastIt=null; _lastCl=null;
   applyView();
 }
 
+var _lblI=null,_lblC=null,_lastIt=null,_lastCl=null,_vbRaf=null;
 function applyView(){
   var W=VIEW.w, H=W*aspect;
   svg.setAttribute('viewBox',(VIEW.x-W/2)+' '+(VIEW.y-H/2)+' '+W+' '+H);
-  // label LOD
-  var showItems = W<1500;
-  svg.querySelectorAll('.wb-lbl-item').forEach(function(el){ el.style.opacity=showItems?1:0; });
-  svg.querySelectorAll('.wb-lbl-cluster').forEach(function(el){ el.style.opacity=W<2400?1:0.4; });
+  if(!_lblI){ _lblI=Array.prototype.slice.call(svg.querySelectorAll('.wb-lbl-item')); _lblC=Array.prototype.slice.call(svg.querySelectorAll('.wb-lbl-cluster')); }
+  var itOn = W<1500 ? 1 : 0;
+  var clOp = W<2400 ? 1 : 0.4;
+  if(itOn!==_lastIt){ _lastIt=itOn; for(var i=0;i<_lblI.length;i++) _lblI[i].style.opacity=itOn; }
+  if(clOp!==_lastCl){ _lastCl=clOp; for(var j=0;j<_lblC.length;j++) _lblC[j].style.opacity=clOp; }
+}
+function requestView(){
+  if(_vbRaf) return;
+  _vbRaf=requestAnimationFrame(function(){ _vbRaf=null; applyView(); });
 }
 
 // ── Interaction: pan / momentum / pinch / wheel / tap / press-hold ─────────
@@ -5123,7 +5130,7 @@ function wire(){
       var newD=Math.hypot(ev.clientX-other.x,ev.clientY-other.y);
       if(oldD>0&&newD>0){
         VIEW.w=Math.max(130,Math.min(3400,VIEW.w*oldD/newD));
-        applyView();
+        requestView();
       }
       ges=null; return;
     }
@@ -5135,7 +5142,7 @@ function wire(){
       var r=svg.getBoundingClientRect();
       VIEW.x=ges.vx-dx/r.width*VIEW.w;
       VIEW.y=ges.vy-dy/r.height*(VIEW.w*aspect);
-      applyView();
+      requestView();
       ges.moves.push({x:ev.clientX,y:ev.clientY,t:performance.now()});
       if(ges.moves.length>6)ges.moves.shift();
     }
@@ -5158,7 +5165,7 @@ function wire(){
       function glide(){
         vx*=0.92; vy*=0.92;
         if(Math.abs(vx)<VIEW.w*0.0004&&Math.abs(vy)<VIEW.w*0.0004){mom=null;return;}
-        VIEW.x+=vx; VIEW.y+=vy; applyView();
+        VIEW.x+=vx; VIEW.y+=vy; requestView();
         mom=requestAnimationFrame(glide);
       }
       mom=requestAnimationFrame(glide);
@@ -5170,7 +5177,7 @@ function wire(){
   svg.addEventListener('wheel',function(ev){
     ev.preventDefault();
     VIEW.w=Math.max(130,Math.min(3400,VIEW.w*(ev.deltaY>0?1.1:0.9)));
-    applyView();
+    requestView();
   },{passive:false});
   var crumb=document.getElementById('wb-crumb');
   if(crumb) crumb.addEventListener('click',function(){ flyTo(0,0,2100); hideTip(); });
