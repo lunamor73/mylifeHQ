@@ -4245,12 +4245,13 @@ function buildGraph(){
 
 // ── Physics ─────────────────────────────────────────────────────────────────
 function tick(){
-  // spring forces
+  var _t=performance.now();
+  // spring forces — soft, underwater
   for(var e=0;e<edges.length;e++){
     var ed=edges[e];
     var dx=ed.b.x-ed.a.x, dy=ed.b.y-ed.a.y;
     var d=Math.sqrt(dx*dx+dy*dy)||1;
-    var f=(d-ed.len)*ed.k*alpha;
+    var f=(d-ed.len)*ed.k*alpha*0.55;
     var fx=dx/d*f, fy=dy/d*f;
     ed.a.vx+=fx; ed.a.vy+=fy;
     ed.b.vx-=fx; ed.b.vy-=fy;
@@ -4264,7 +4265,7 @@ function tick(){
       var d2=dx2*dx2+dy2*dy2;
       if(d2>640000) continue;
       var d3=Math.sqrt(d2)||1;
-      var rep=(a.type==='domain'||b.type==='domain')?5200:1500;
+      var rep=(a.type==='domain'||b.type==='domain')?3400:950;
       var f2=rep/(d2+800)*alpha;
       var fx2=dx2/d3*f2, fy2=dy2/d3*f2;
       a.vx-=fx2; a.vy-=fy2;
@@ -4285,34 +4286,33 @@ function tick(){
         // everyone else clears to outer space — held on a far ring
         var f2=(1650-dcen2)*0.0035*alpha;
         nd.vx+=nd.x/dcen2*f2; nd.vy+=nd.y/dcen2*f2;
-        if((nd.grav||0)<0.35 && !nd._drag){
-          nd.vx+=(Math.random()-0.5)*0.4; nd.vy+=(Math.random()-0.5)*0.4;
-        }
+        // ocean current handled in integrate loop
       }
-      if(dcen2>2600){ nd.vx-=nd.x/dcen2*(dcen2-2600)*0.02; nd.vy-=nd.y/dcen2*(dcen2-2600)*0.02; }
+      if(dcen2>2600){ nd.vx-=nd.x/dcen2*(dcen2-2600)*0.008; nd.vy-=nd.y/dcen2*(dcen2-2600)*0.008; }
     } else {
       var gpull=0.0010+0.0085*(nd.grav||0);
       nd.vx+=(0-nd.x)*gpull*alpha; nd.vy+=(0-nd.y)*gpull*alpha;
       var dcen=Math.hypot(nd.x,nd.y);
-      if(dcen>2300){ nd.vx-=nd.x/dcen*(dcen-2300)*0.02; nd.vy-=nd.y/dcen*(dcen-2300)*0.02; }
-      if((nd.grav||0)<0.35 && !nd._drag){
-        nd.vx+=(Math.random()-0.5)*0.55; nd.vy+=(Math.random()-0.5)*0.55;
-      }
+      if(dcen>2300){ nd.vx-=nd.x/dcen*(dcen-2300)*0.008; nd.vy-=nd.y/dcen*(dcen-2300)*0.008; }
+      // ocean current handled in integrate loop
     }
   }
-  // integrate
+  // integrate — drifting in water, swayed by slow currents
   for(var m=0;m<nodes.length;m++){
     var q=nodes[m];
     if(q._drag) { q.vx=0;q.vy=0; continue; }
-    q.vx*=0.90; q.vy*=0.90;
+    var swirl=0.055+(1-(q.grav||0))*0.095;
+    q.vx+=Math.sin(_t*0.00042+m*0.73)*swirl;
+    q.vy+=Math.cos(_t*0.00034+m*1.11)*swirl;
+    q.vx*=0.94; q.vy*=0.94;
     q.x+=q.vx; q.y+=q.vy;
   }
   // spin momentum
   if(Math.abs(spinV)>0.0004){
     rotateAll(spinV);
-    spinV*=0.965;
+    spinV*=0.985;
   }
-  alpha=Math.max(0.02, alpha*0.996);
+  alpha=Math.max(0.035, alpha*0.996);
 }
 
 function rotateAll(angle){
@@ -4656,7 +4656,7 @@ function setFocus(n){
     var other = ed.a===n ? ed.b : (ed.b===n ? ed.a : null);
     if(!other) return;
     var dx=other.x-n.x, dy=other.y-n.y, d=Math.hypot(dx,dy)||1;
-    other.vx+=dx/d*9; other.vy+=dy/d*9;
+    other.vx+=dx/d*5; other.vy+=dy/d*5;
   });
   VIEW.w = n.type==='domain' ? 2400 : (n.type==='cluster' ? 1400 : 900);
   var crumb=document.getElementById('sm-crumb');
