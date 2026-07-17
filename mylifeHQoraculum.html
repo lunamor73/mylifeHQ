@@ -2517,7 +2517,8 @@ function mundusCopy() {
 #p10{background:var(--bg)}
 #p10{align-items:stretch}
 #p10 .top-bar{width:100%;max-width:none}
-.sm-body{position:absolute;top:56px;left:0;right:0;bottom:0;width:auto;max-width:none;overflow:hidden}
+.sm-body{position:absolute;top:56px;left:0;right:0;bottom:0;width:auto;max-width:none;overflow:hidden;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
+.sm-body text{-webkit-user-select:none;user-select:none;pointer-events:none}
 #sm-svg{width:100%;height:100%;display:block;touch-action:none;cursor:grab}
 #sm-svg:active{cursor:grabbing}
 .sm-crumb{position:absolute;top:10px;left:14px;z-index:6;background:#ffffff;border:1.5px solid var(--gold);border-radius:20px;padding:6px 14px;font-size:11px;letter-spacing:0.1em;text-transform:uppercase;color:var(--gold);cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,0.07)}
@@ -4187,7 +4188,7 @@ function buildGraph(){
       edges.push({a:dnode,b:cnode,len:330,k:0.02,kind:'struct',dom:dom.key});
       cl.items.forEach(function(it,ii){
         var a3=a2+((ii/cl.items.length)-0.5)*Math.PI*1.2;
-        var inode=addNode({id:'i:'+cl.key+':'+ii,type:'item',label:it,name:it,
+        var inode=addNode({id:'i:'+cl.key+':'+ii,type:'item',label:it,name:it,clusterKey:cl.key,
           x:cx+Math.cos(a3)*130, y:cy+Math.sin(a3)*130, vx:0,vy:0, r:9,
           stat:iStats[ii], dom:dom.key, cluster:cl.label});
         edges.push({a:cnode,b:inode,len:140,k:0.03,kind:'struct',dom:dom.key});
@@ -4430,8 +4431,65 @@ function findNodeAt(wx,wy){
   return best;
 }
 
+// ── Star wisdom — the esoteric register (Web keeps the earth voice) ────────
+var STAR_WISDOM = {
+  _generic: [
+    'Every orbit returns to its beginning, changed.','The unseen holds the seen in place.',
+    'You are made of what you are watching.','What is distant is not absent.',
+    'The void between stars is also the map.','Light that left long ago still arrives on time.',
+    'A single star is enough to steer by.','The pattern is older than the naming.',
+    'Stillness at the centre; motion at the rim.','What sets was never extinguished.',
+    'The dark is where new light is grown.','As above, so within.'
+  ],
+  lunamor: ['A calling is a star you agreed to follow before you arrived.','The work is the vessel; the light is the cargo.','Creation is the universe noticing itself.','Orbit your purpose, not your worry.'],
+  family: ['Ancestors are stars that set and kept shining.','The vā between souls binds; it does not divide.','Blood is an old light still travelling.','Some bonds are gravitational — unseen, unbroken.'],
+  wellbeing: ['The body is a tide the moon still remembers.','Breath is the smallest orbit.','Emotion is weather; awareness is sky.','Rest is the dark half of every star\u2019s arc.'],
+  home: ['Home is the fixed star of the wanderer.','Every ending is a horizon, not a wall.','The hearth is a small sun.','Inheritance is starlight — long travelled, finally arriving.'],
+  lunava: ['The muse is a signal; keep the channel clear.','Craft turns starlight into form.','Rhythm is the oldest constellation.'],
+  lunawan: ['Knowledge rises like a slow dawn.','The question is a telescope.','Deep study bends time.'],
+  lunatir: ['A gathering is a constellation choosing itself.','Community: many fires, one sky.'],
+  lunaama: ['Order is the orbit that frees the planet.','Structure is starlight, slowed.'],
+  lunalume: ['A true word travels like light — unbent.','Speak as the lighthouse, not the flare.'],
+  lunacai: ['Money is a moon — it reflects, it does not shine.','Abundance orbits attention.'],
+  lunafam: ['Kinship is gravity between chosen stars.','Your constellation is drawn by who you hold.'],
+  lunadan: ['Fate whispers in the direction of your pull.','Vision is starlight from the future self.'],
+  lunacof: ['Memory is the sky\u2019s archive.','What is recorded becomes a fixed star.'],
+};
+function starWisdomFor(n){
+  var pool;
+  if(n.type==='domain') pool=STAR_WISDOM[n.key]||STAR_WISDOM._generic;
+  else if(n.type==='cluster') pool=(STAR_WISDOM[n.key]||[]).concat(STAR_WISDOM[n.dom]||[]);
+  else pool=(STAR_WISDOM[n.clusterKey]||[]).concat(STAR_WISDOM._generic);
+  if(!pool.length) pool=STAR_WISDOM._generic;
+  var lsKey='phq-wisdom-s-'+n.id;
+  var idx=parseInt(localStorage.getItem(lsKey)||'0');
+  localStorage.setItem(lsKey,String(idx+1));
+  return pool[idx%pool.length];
+}
+function showStarWisdom(n){
+  var body=svg.parentElement;
+  var r=svg.getBoundingClientRect();
+  var W=VIEW.w,H=W*aspect;
+  var sx=(n.x-(-W/2))/W*r.width;
+  var sy=(n.y-(-H/2))/H*r.height;
+  var div=document.createElement('div');
+  div.className='wb-wisdom';
+  div.textContent=starWisdomFor(n);
+  var half=Math.min(300,r.width*0.42);
+  div.style.left=Math.max(10,Math.min(r.width-half*2-10,sx-half))+'px';
+  div.style.top=Math.max(14,sy-95)+'px';
+  div.style.width=(half*2)+'px';
+  body.appendChild(div);
+  requestAnimationFrame(function(){div.classList.add('in');});
+  setTimeout(function(){div.classList.remove('in');setTimeout(function(){div.remove();},700);},2600);
+}
+var smHoldTimer=null, smHoldNode=null;
+function smCancelHold(){ if(smHoldTimer){clearTimeout(smHoldTimer);smHoldTimer=null;} smHoldNode=null; }
+
 function wire(){
+  svg.addEventListener('contextmenu',function(ev){ev.preventDefault();});
   svg.addEventListener('pointerdown',function(ev){
+    ev.preventDefault();
     svg.setPointerCapture(ev.pointerId);
     pointers[ev.pointerId]={x:ev.clientX,y:ev.clientY};
     spinV=0;
@@ -4440,7 +4498,14 @@ function wire(){
       var hit=findNodeAt(w.x,w.y);
       gesture={t0:performance.now(),x0:ev.clientX,y0:ev.clientY,moved:false,
                node:hit, lastAng:Math.atan2(w.y,w.x), angMoves:[]};
-      if(hit){ hit._drag=true; }
+      if(hit){
+        hit._drag=true;
+        smHoldNode=hit;
+        smHoldTimer=setTimeout(function(){
+          smHoldTimer=null;
+          if(smHoldNode){ showStarWisdom(smHoldNode); if(gesture)gesture.held=true; }
+        },480);
+      }
     }
   });
   svg.addEventListener('pointermove',function(ev){
@@ -4452,6 +4517,7 @@ function wire(){
       pointers[ev.pointerId]={x:ev.clientX,y:ev.clientY};
       var newD=Math.hypot(ev.clientX-other.x,ev.clientY-other.y);
       if(oldD>0&&newD>0){ VIEW.w=Math.max(500,Math.min(6500,VIEW.w*oldD/newD)); }
+      smCancelHold();
       if(gesture&&gesture.node){gesture.node._drag=false;}
       gesture=null;
       return;
@@ -4459,7 +4525,7 @@ function wire(){
     pointers[ev.pointerId]={x:ev.clientX,y:ev.clientY};
     if(!gesture) return;
     var dx=ev.clientX-gesture.x0, dy=ev.clientY-gesture.y0;
-    if(Math.abs(dx)+Math.abs(dy)>10) gesture.moved=true;
+    if(Math.abs(dx)+Math.abs(dy)>10){ gesture.moved=true; smCancelHold(); }
     if(!gesture.moved) return;
     var w=clientToWorld(ev.clientX,ev.clientY);
     if(gesture.node){
@@ -4479,9 +4545,10 @@ function wire(){
   });
   function up(ev){
     delete pointers[ev.pointerId];
+    smCancelHold();
     if(!gesture) return;
     if(gesture.node) gesture.node._drag=false;
-    if(!gesture.moved && gesture.node){
+    if(!gesture.moved && gesture.node && !gesture.held){
       setFocus(gesture.node);
     } else if(!gesture.moved){
       hideTip();
