@@ -3623,6 +3623,47 @@ function oiDomainIcon(key){
   var img=document.querySelector('#p2 .d-tile img[alt="'+alt+'"]');
   return img?img.src:'';
 }
+function oiExtraSectionsHTML(entries){
+  var esc=function(t){return String(t).replace(/&/g,'&amp;').replace(/</g,'&lt;');};
+  var tm=entries.reduce(function(a,e){return a+(e.timeMins||0);},0);
+  function bars(title, counts, glyphs, labels, fallback){
+    var es=Object.entries(counts).sort(function(a,b){return b[1]-a[1];});
+    if(!es.length) return '';
+    var m2=es[0][1];
+    var out='<div class="ins-section"><div class="ins-h">'+title+'</div><div class="ins-bars">';
+    es.forEach(function(p){
+      var g=glyphs[p[0]]||fallback;
+      var lbl=labels[p[0]]||p[0].replace(/-/g,' ').replace(/\b\w/g,function(c){return c.toUpperCase();});
+      out+='<div class="ins-bar-row"><div class="ins-bar-icon" style="display:flex;align-items:center;justify-content:center;font-size:14px;color:var(--gold)">'+g+'</div>'
+        +'<div class="ins-bar-track"><div class="ins-bar-fill" style="width:'+Math.round(p[1]/m2*100)+'%"></div><div class="ins-bar-name">'+esc(lbl)+'</div></div>'
+        +'<div class="ins-bar-val">'+p[1]+'</div></div>';
+    });
+    return out+'</div></div>';
+  }
+  var zc={},dcn={},exc={};
+  entries.forEach(function(e){
+    if(e.zpd)zc[e.zpd]=(zc[e.zpd]||0)+1;
+    if(e.direction)dcn[e.direction]=(dcn[e.direction]||0)+1;
+    if(e.exchange)exc[e.exchange]=(exc[e.exchange]||0)+1;
+  });
+  var h='';
+  h+=bars('Zones', zc,
+    {'flow':'\u25CE','stretching':'\u2197','support':'\u25B3','overload':'\u25B2','underload':'\u25BD','cruising':'\u2192'},
+    {'flow':'In Flow','stretching':'Stretching','support':'With Support','overload':'Overload','underload':'Underload','cruising':'Cruising'},
+    '\u25CE');
+  h+=bars('Ebb & Flow', dcn,
+    {'high-tide':'\u224B','low-tide':'\u2248','filling-up':'\u21E2\u224B','pouring-out':'\u224B\u21E2','incoming':'\u21E2\u224B','outgoing':'\u224B\u21E2','high':'\u224B','low':'\u2248','still-waters':'\u2500'},
+    {'high-tide':'High Tide','low-tide':'Low Tide','filling-up':'Filling Up','pouring-out':'Pouring Out','still-waters':'Still Waters'},
+    '\u2248');
+  h+=bars('Exchange', exc,
+    {'giving':'\u2191','receiving':'\u2193','giving & receiving':'\u21C5','balanced':'\u21C4','solo':'\u25CF','collaborative':'\u21C4'},
+    {'giving':'Giving','receiving':'Receiving','giving & receiving':'Giving & Receiving'},
+    '\u21C4');
+  h+='<div class="ins-section"><div class="ins-stats" style="grid-template-columns:1fr">'
+    +'<div class="ins-stat accent"><div class="ins-stat-num">'+(tm>=60?Math.floor(tm/60)+'<span class="unit">h</span> '+(tm%60)+'<span class="unit">m</span>':tm+'<span class="unit">m</span>')+'</div><div class="ins-stat-lbl">Total logged time</div></div>'
+    +'</div></div>';
+  return h;
+}
 function oiInsightsHTML(entries){
   if(!entries.length) return '<div class="ins-empty">No check-ins in this window yet.</div>';
   var esc=function(t){return String(t).replace(/&/g,'&amp;').replace(/</g,'&lt;');};
@@ -3653,6 +3694,7 @@ function oiInsightsHTML(entries){
       +'<div class="ins-bar-val">'+p[1]+'</div></div>';
   });
   h+='</div></div>';
+  h+=oiExtraSectionsHTML(entries);
   // most touched
   var ic2={}, cnt={};
   entries.forEach(function(e){(e.items||[]).forEach(function(it){
@@ -3820,6 +3862,25 @@ function generateSeasonOracle(){
 (function(){
   var s=SEASONS.find(function(x){return x.months.indexOf(new Date().getMonth())>-1;})||SEASONS[0];
   // season button label is static
+})();
+
+// ── Weekly Insights: append Zones / Ebb & Flow / Exchange / Total time ────
+(function(){
+  if(typeof buildInsights!=='function') return;
+  var _origBI=buildInsights;
+  window.buildInsights=function(){
+    _origBI.apply(this,arguments);
+    try{
+      var root=document.getElementById('ins-content');
+      if(!root) return;
+      var all=getHistory();
+      var hist=(typeof filterByPeriod==='function')?filterByPeriod(all):all;
+      if(!hist.length) return;
+      var div=document.createElement('div');
+      div.innerHTML=oiExtraSectionsHTML(hist);
+      while(div.firstChild) root.appendChild(div.firstChild);
+    }catch(err){}
+  };
 })();
 </script>
 
