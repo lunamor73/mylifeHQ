@@ -4819,7 +4819,9 @@ function layout(){
       if(sStat==='dark') sStat=bestStat(iStats);
       clStats.push(sStat); domAct+=cl._act;
       var caJ=ca+(hsh(cl.key+'a')-0.5)*clSpan*0.30;
-      var crJ=(R_CL+(hsh(cl.key+'r')-0.5)*110)*domScale;
+      var clRecent = dom.key==='lunamor' ? (subR[cl.key]||0) : cl.items.reduce(function(sm,it2){return sm+(itR[it2]||0);},0);
+      var clPull = clRecent>0 ? Math.max(0.72, 1-0.07*clRecent) : 1.0;
+      var crJ=(R_CL+(hsh(cl.key+'r')-0.5)*110)*domScale*clPull;
       var cnode={id:'c:'+cl.key,type:'cluster',key:cl.key,label:cl.label,dom:dom.key,
         ang:caJ, x:Math.cos(caJ)*crJ, y:Math.sin(caJ)*crJ, r:26, stat:sStat,
         icon:clusterIconFor(cl.key,dom.key), parent:dnode, act:cl._act};
@@ -4827,7 +4829,9 @@ function layout(){
       var m=cl.items.length;
       cl.items.forEach(function(it,ii){
         var ia=ca + ((ii+0.5)/m - 0.5)*clSpan*0.94 + (hsh(it)-0.5)*(clSpan/Math.max(1,m))*0.6;
-        var rr=(R_ITS[ii%3] + (hsh(it+'r')-0.5)*85)*domScale;
+        var recentN=itR[it]||0, priorN=itP[it]||0;
+        var pull = recentN>0 ? Math.max(0.52, 1-0.16*recentN-0.08) : (priorN>0 ? 0.90 : 1.04);
+        var rr=(R_ITS[ii%3] + (hsh(it+'r')-0.5)*85)*domScale*pull;
         nodes.push({id:'i:'+cl.key+':'+ii,type:'item',label:it,name:it,dom:dom.key,tier:ii%3,
           clusterKey:cl.key, ang:ia, x:Math.cos(ia)*rr, y:Math.sin(ia)*rr, r:18,
           stat:iStats[ii], icon:itemIconFor(it), parent:cnode,
@@ -4944,7 +4948,7 @@ function buildDOM(){
       var fx=n.x/d, fy=n.y/d;
       var spread=(ri-1)*0.22;
       var ax=Math.cos(Math.atan2(fy,fx)+spread), ay=Math.sin(Math.atan2(fy,fx)+spread);
-      var far=d+1100+ri*260;
+      var far=60000;
       th+='<line x1="'+n.x.toFixed(1)+'" y1="'+n.y.toFixed(1)+'" x2="'+(ax*far).toFixed(1)+'" y2="'+(ay*far).toFixed(1)+'" stroke="'+silk+'" stroke-width="1.7" opacity="0.42"/>';
     });
     // shorter anchors on the far side — attached to nearer branches
@@ -4954,7 +4958,7 @@ function buildDOM(){
       var far2=kids2.slice().sort(function(x,y){return Math.hypot(y.x,y.y)-Math.hypot(x.x,x.y);})[0];
       if(!far2) return;
       var d2=Math.hypot(far2.x,far2.y)||1;
-      th+='<line x1="'+far2.x.toFixed(1)+'" y1="'+far2.y.toFixed(1)+'" x2="'+(far2.x/d2*(d2+380)).toFixed(1)+'" y2="'+(far2.y/d2*(d2+380)).toFixed(1)+'" stroke="'+silk+'" stroke-width="1.3" opacity="0.35"/>';
+      th+='<line x1="'+far2.x.toFixed(1)+'" y1="'+far2.y.toFixed(1)+'" x2="'+(far2.x/d2*60000).toFixed(1)+'" y2="'+(far2.y/d2*60000).toFixed(1)+'" stroke="'+silk+'" stroke-width="1.3" opacity="0.35"/>';
     });
   }
 
