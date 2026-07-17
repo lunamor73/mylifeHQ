@@ -2506,7 +2506,9 @@ function mundusCopy() {
 <!-- == P10: STAR MAP == -->
 <style>
 #p10{background:var(--bg)}
-.sm-body{position:relative;height:calc(100% - 56px);overflow:hidden}
+#p10{align-items:stretch}
+#p10 .top-bar{width:100%;max-width:none}
+.sm-body{position:relative;height:calc(100% - 56px);width:100vw;max-width:none;overflow:hidden;align-self:stretch;flex:1}
 #sm-svg{width:100%;height:100%;display:block;touch-action:none;cursor:grab}
 #sm-svg:active{cursor:grabbing}
 .sm-crumb{position:absolute;top:10px;left:14px;z-index:6;background:#ffffff;border:1.5px solid var(--gold);border-radius:20px;padding:6px 14px;font-size:11px;letter-spacing:0.1em;text-transform:uppercase;color:var(--gold);cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,0.07)}
