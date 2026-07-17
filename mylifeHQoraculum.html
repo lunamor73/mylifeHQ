@@ -2505,36 +2505,36 @@ function mundusCopy() {
 
 <!-- == P10: STAR MAP == -->
 <style>
-#p10{background:radial-gradient(ellipse at 50% 30%, #0c0918 0%, #050308 70%, #020204 100%)}
+#p10{background:var(--bg)}
 .sm-body{position:relative;height:calc(100% - 56px);overflow:hidden}
 #sm-svg{width:100%;height:100%;display:block;touch-action:none;cursor:grab}
 #sm-svg:active{cursor:grabbing}
-.sm-crumb{position:absolute;top:10px;left:14px;z-index:6;background:rgba(12,16,30,0.85);border:1px solid rgba(200,169,110,0.3);border-radius:20px;padding:6px 14px;font-size:11px;letter-spacing:0.1em;text-transform:uppercase;color:#e8d5a8;cursor:pointer}
-.sm-tooltip{position:absolute;bottom:20px;left:50%;transform:translateX(-50%);background:rgba(12,16,30,0.92);border:1px solid rgba(200,169,110,0.35);border-radius:12px;padding:12px 18px;min-width:230px;max-width:85%;text-align:center;opacity:0;pointer-events:none;transition:opacity 0.25s;z-index:5}
+.sm-crumb{position:absolute;top:10px;left:14px;z-index:6;background:#ffffff;border:1.5px solid var(--gold);border-radius:20px;padding:6px 14px;font-size:11px;letter-spacing:0.1em;text-transform:uppercase;color:var(--gold);cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,0.07)}
+.sm-tooltip{position:absolute;bottom:52px;left:50%;transform:translateX(-50%);background:rgba(255,255,255,0.96);border:1px solid var(--border);border-radius:12px;padding:12px 18px;min-width:230px;max-width:85%;text-align:center;opacity:0;pointer-events:none;transition:opacity 0.25s;z-index:5;box-shadow:0 4px 18px rgba(0,0,0,0.10)}
 .sm-tooltip.show{opacity:1}
-.sm-tt-name{font-size:15px;font-weight:700;color:#e8d5a8;letter-spacing:0.05em}
-.sm-tt-domain{font-size:9px;letter-spacing:0.16em;text-transform:uppercase;opacity:0.5;margin-bottom:3px;color:#fff}
-.sm-tt-status{font-size:11px;margin-top:5px;color:#9db4d8}
-.sm-tt-items{font-size:10px;margin-top:6px;opacity:0.65;color:#cfd8e8;line-height:1.5}
-.sm-legend{position:absolute;top:14px;left:120px;right:10px;display:flex;justify-content:center;gap:14px;font-size:9px;letter-spacing:0.1em;text-transform:uppercase;opacity:0.55;color:#cfd8e8;z-index:4}
+.sm-tt-name{font-size:15px;font-weight:700;color:var(--gold);letter-spacing:0.05em}
+.sm-tt-domain{font-size:9px;letter-spacing:0.16em;text-transform:uppercase;opacity:0.55;margin-bottom:3px;color:var(--text)}
+.sm-tt-status{font-size:11px;margin-top:5px;color:var(--muted)}
+.sm-tt-items{font-size:10px;margin-top:6px;opacity:0.75;color:var(--text);line-height:1.5}
+.sm-legend{position:absolute;bottom:14px;left:0;right:0;display:flex;justify-content:center;gap:14px;font-size:9px;letter-spacing:0.1em;text-transform:uppercase;opacity:0.75;color:var(--muted);z-index:4}
 .sm-legend span{display:flex;align-items:center;gap:4px}
 .sm-dot{width:7px;height:7px;border-radius:50%;display:inline-block}
 @keyframes smTwinkle{0%,100%{opacity:1}50%{opacity:0.55}}
 .sm-star-lit{animation:smTwinkle 3.2s ease-in-out infinite}
 </style>
 <div id="p10" class="page">
-  <div class="top-bar" style="background:transparent;border:none">
-    <button class="back-btn" onclick="nav('p1')" style="color:#cfd8e8">&#8592; Back</button>
-    <div class="bar-title" style="color:#e8d5a8">Wayfinder</div>
+  <div class="top-bar">
+    <button class="back-btn" onclick="nav('p1')">&#8592; Back</button>
+    <div class="bar-title">Wayfinder</div>
     <div style="width:60px"></div>
   </div>
   <div class="sm-body">
     <div class="sm-crumb" id="sm-crumb">✦ Universe</div>
     <div class="sm-legend">
-      <span><span class="sm-dot" style="background:#ffd98a;box-shadow:0 0 6px #ffd98a"></span>Lit</span>
-      <span><span class="sm-dot" style="background:#ffb35c;box-shadow:0 0 6px #ffb35c"></span>Rising</span>
-      <span><span class="sm-dot" style="background:#5a7bb0"></span>Fading</span>
-      <span><span class="sm-dot" style="background:#2a3350"></span>Dark</span>
+      <span><span class="sm-dot" style="background:#b8920f"></span>Lit</span>
+      <span><span class="sm-dot" style="background:#d98a2b"></span>Rising</span>
+      <span><span class="sm-dot" style="background:#8aa0c0"></span>Fading</span>
+      <span><span class="sm-dot" style="background:#c9c9c9"></span>Dark</span>
     </div>
     <svg id="sm-svg" viewBox="0 0 400 560" preserveAspectRatio="xMidYMid meet"></svg>
     <div class="sm-tooltip" id="sm-tooltip"></div>
@@ -3911,9 +3911,9 @@ var SM_WORLD = [
 ];
 
 var COLORS = {
-  lit:{fill:'#ffd98a'}, rising:{fill:'#ffb35c'}, fading:{fill:'#5a7bb0'}, dark:{fill:'#4a5880'}
+  lit:{fill:'#b8920f'}, rising:{fill:'#d98a2b'}, fading:{fill:'#8aa0c0'}, dark:{fill:'#c9c9c9'}
 };
-var DOM_HUE = { lunamor:'#c8a96e', family:'#b07adb', wellbeing:'#5fb8a5', home:'#d88a6a' };
+var DOM_HUE = { lunamor:'#b8920f', family:'#8a5aa8', wellbeing:'#2f8a7a', home:'#b06a4a' };
 var STATUS_TEXT = {
   lit:'Lit — active and steady', rising:'Rising — coming into the light',
   fading:'Fading — slipping below the horizon', dark:'Dark — below the horizon'
@@ -3936,6 +3936,25 @@ function bestStat(list){
   if(list.indexOf('lit')>-1)return 'lit';
   if(list.indexOf('fading')>-1)return 'fading';
   return 'dark';
+}
+
+// ── Icons from the app itself ──────────────────────────────────────────────
+function domainIconFor(key){
+  var alt={lunamor:'LUNAMOR',family:'Family',wellbeing:'Wellbeing',home:'Home'}[key];
+  var img=document.querySelector('#p2 .d-tile img[alt="'+alt+'"]');
+  return img?img.src:null;
+}
+function clusterIconFor(key,domKey){
+  if(key.indexOf('luna')===0 && typeof LUNA_DOMAINS!=='undefined'){
+    var ld=null;
+    for(var i=0;i<LUNA_DOMAINS.length;i++) if(LUNA_DOMAINS[i].id===key){ld=LUNA_DOMAINS[i];break;}
+    if(ld&&ld.icon&&ld.icon.length>50) return ld.icon;
+  }
+  return domainIconFor(domKey);
+}
+function itemIconFor(name){
+  try{ var ic=findItemIcon(name); if(ic&&ic.length>50) return ic; }catch(e){}
+  return null;
 }
 
 // ── Graph state ─────────────────────────────────────────────────────────────
@@ -4086,52 +4105,78 @@ function rotateAll(angle){
 var NS='http://www.w3.org/2000/svg';
 function buildDOM(){
   svg.innerHTML='';
-  // esoteric nebula backdrop
+  // soft light washes
   var defs=document.createElementNS(NS,'defs');
-  defs.innerHTML='<radialGradient id="neb1"><stop offset="0%" stop-color="#3d2a5e" stop-opacity="0.55"/><stop offset="100%" stop-color="#3d2a5e" stop-opacity="0"/></radialGradient>'
-    +'<radialGradient id="neb2"><stop offset="0%" stop-color="#1e4a4a" stop-opacity="0.45"/><stop offset="100%" stop-color="#1e4a4a" stop-opacity="0"/></radialGradient>'
-    +'<radialGradient id="neb3"><stop offset="0%" stop-color="#5e3a2a" stop-opacity="0.35"/><stop offset="100%" stop-color="#5e3a2a" stop-opacity="0"/></radialGradient>';
+  defs.innerHTML='<radialGradient id="wash1"><stop offset="0%" stop-color="#b8920f" stop-opacity="0.07"/><stop offset="100%" stop-color="#b8920f" stop-opacity="0"/></radialGradient>'
+    +'<radialGradient id="wash2"><stop offset="0%" stop-color="#8a5aa8" stop-opacity="0.05"/><stop offset="100%" stop-color="#8a5aa8" stop-opacity="0"/></radialGradient>'
+    +'<radialGradient id="wash3"><stop offset="0%" stop-color="#2f8a7a" stop-opacity="0.05"/><stop offset="100%" stop-color="#2f8a7a" stop-opacity="0"/></radialGradient>';
   svg.appendChild(defs);
   var gB=document.createElementNS(NS,'g');
-  gB.innerHTML='<ellipse cx="-900" cy="-700" rx="1600" ry="1200" fill="url(#neb1)"/>'
-    +'<ellipse cx="1100" cy="900" rx="1800" ry="1300" fill="url(#neb2)"/>'
-    +'<ellipse cx="200" cy="-1200" rx="1400" ry="1000" fill="url(#neb3)"/>';
-  // background starfield — brighter, varied
+  gB.innerHTML='<ellipse cx="-900" cy="-700" rx="1700" ry="1300" fill="url(#wash2)"/>'
+    +'<ellipse cx="1100" cy="900" rx="1900" ry="1400" fill="url(#wash3)"/>'
+    +'<ellipse cx="100" cy="-100" rx="2100" ry="1700" fill="url(#wash1)"/>';
   var bgStars='';
-  for(var bi=0;bi<220;bi++){
+  for(var bi=0;bi<160;bi++){
     var bx=(Math.random()*8000-4000).toFixed(0), by=(Math.random()*8000-4000).toFixed(0);
-    var br=(Math.random()*3.4+1).toFixed(1), bo=(Math.random()*0.55+0.18).toFixed(2);
-    bgStars+='<circle cx="'+bx+'" cy="'+by+'" r="'+br+'" fill="#c8d4ee" opacity="'+bo+'"/>';
+    var br=(Math.random()*2.6+0.8).toFixed(1), bo=(Math.random()*0.28+0.08).toFixed(2);
+    bgStars+='<circle cx="'+bx+'" cy="'+by+'" r="'+br+'" fill="#8a8a8a" opacity="'+bo+'"/>';
   }
   gB.innerHTML+=bgStars;
   svg.appendChild(gB);
+
   var gE=document.createElementNS(NS,'g'), gN=document.createElementNS(NS,'g'), gL=document.createElementNS(NS,'g');
   svg.appendChild(gE); svg.appendChild(gN); svg.appendChild(gL);
   elEdges=edges.map(function(ed){
     var l=document.createElementNS(NS,'line');
-    l.setAttribute('stroke', ed.kind==='struct' ? (DOM_HUE[ed.dom]||'#2a3a5e') : '#7d9fd4');
-    l.setAttribute('stroke-width', ed.kind==='struct'?2:1.4);
-    l.setAttribute('opacity', ed.kind==='struct'?0.22:0);
+    l.setAttribute('stroke', ed.kind==='struct' ? (DOM_HUE[ed.dom]||'#c0c0c0') : '#9aa8c8');
+    l.setAttribute('stroke-width', ed.kind==='struct'?2.5:1.6);
+    l.setAttribute('opacity', ed.kind==='struct'?0.25:0);
     if(ed.kind!=='struct') l.setAttribute('stroke-dasharray','5 7');
     gE.appendChild(l); return l;
   });
   elNodes=nodes.map(function(n){
-    var c=document.createElementNS(NS,'circle');
-    c.setAttribute('r',n.r);
-    c.setAttribute('fill', n.type==='domain' ? (DOM_HUE[n.dom]||'#e8d5a8') : COLORS[n.stat||'dark'].fill);
-    if(n.stat==='lit'||n.stat==='rising'||n.type==='domain') c.setAttribute('class','sm-star-lit');
-    c.setAttribute('data-id',n.id);
-    c.style.cursor='pointer';
-    gN.appendChild(c); return c;
+    var g=document.createElementNS(NS,'g');
+    g.style.cursor='pointer';
+    var icon = n.type==='domain' ? domainIconFor(n.key)
+             : n.type==='cluster' ? clusterIconFor(n.key,n.dom)
+             : itemIconFor(n.name);
+    var R = n.type==='domain' ? 64 : (n.type==='cluster' ? 38 : 22);
+    n.r = R;
+    var ringCol = n.type==='domain' ? (DOM_HUE[n.dom]||'#b8920f') : COLORS[n.stat||'dark'].fill;
+    var ring=document.createElementNS(NS,'circle');
+    ring.setAttribute('r',R);
+    ring.setAttribute('fill','#ffffff');
+    ring.setAttribute('stroke',ringCol);
+    ring.setAttribute('stroke-width', n.type==='domain'?5:(n.type==='cluster'?4:3));
+    if(n.stat==='lit'||n.stat==='rising'||n.type==='domain') ring.setAttribute('class','sm-star-lit');
+    g.appendChild(ring);
+    if(icon){
+      var im=document.createElementNS(NS,'image');
+      var s=R*1.5;
+      im.setAttribute('x',-s/2); im.setAttribute('y',-s/2);
+      im.setAttribute('width',s); im.setAttribute('height',s);
+      im.setAttribute('href',icon);
+      im.setAttribute('preserveAspectRatio','xMidYMid meet');
+      im.style.pointerEvents='none';
+      if(n.stat==='dark') im.setAttribute('opacity','0.4');
+      else if(n.stat==='fading') im.setAttribute('opacity','0.65');
+      g.appendChild(im);
+    } else {
+      var dot=document.createElementNS(NS,'circle');
+      dot.setAttribute('r',R*0.55);
+      dot.setAttribute('fill',ringCol);
+      if(n.stat==='dark') dot.setAttribute('opacity','0.5');
+      g.appendChild(dot);
+    }
+    gN.appendChild(g); return g;
   });
   elLabels=nodes.map(function(n){
     var t=document.createElementNS(NS,'text');
     t.setAttribute('text-anchor','middle');
     t.setAttribute('font-size', n.type==='domain'?46:(n.type==='cluster'?24:15));
-    t.setAttribute('font-weight', n.type==='domain'?'700':'400');
+    t.setAttribute('font-weight', n.type==='domain'?'700':'500');
     t.setAttribute('letter-spacing','0.08em');
-    t.setAttribute('fill', n.type==='domain' ? '#e8d5a8' : (n.stat==='dark'?'#6a7898':'#dfe8f8'));
-    t.setAttribute('data-id',n.id);
+    t.setAttribute('fill', n.type==='domain' ? (DOM_HUE[n.dom]||'#b8920f') : (n.stat==='dark'?'#a8a8a8':'#444444'));
     t.textContent = n.label.length>24 ? n.label.slice(0,23)+'…' : n.label;
     t.style.pointerEvents='none';
     gL.appendChild(t); return t;
@@ -4155,27 +4200,27 @@ function render(){
     l.setAttribute('x2',ed.b.x.toFixed(1)); l.setAttribute('y2',ed.b.y.toFixed(1));
     var hot = focusNode && (ed.a===focusNode||ed.b===focusNode);
     if(ed.kind==='struct'){
-      l.setAttribute('opacity', hot?0.85:0.22);
-      l.setAttribute('stroke', hot?'#ffd98a':(DOM_HUE[ed.dom]||'#2a3a5e'));
-      l.setAttribute('stroke-width', hot?3:2);
+      l.setAttribute('opacity', hot?0.9:0.25);
+      l.setAttribute('stroke', hot?'#b8920f':(DOM_HUE[ed.dom]||'#c0c0c0'));
+      l.setAttribute('stroke-width', hot?4:2.5);
     } else {
-      l.setAttribute('opacity', hot?0.8:(focusNode?0.04:0.10));
-      l.setAttribute('stroke', hot?'#ffd98a':'#7d9fd4');
+      l.setAttribute('opacity', hot?0.85:(focusNode?0.05:0.14));
+      l.setAttribute('stroke', hot?'#b8920f':'#9aa8c8');
     }
   }
   for(var i=0;i<nodes.length;i++){
-    var n=nodes[i], c=elNodes[i], t=elLabels[i];
-    c.setAttribute('cx',n.x.toFixed(1)); c.setAttribute('cy',n.y.toFixed(1));
+    var n=nodes[i], g=elNodes[i], t=elLabels[i];
     var isFocus=n===focusNode, isNb=focusSet[n.id];
-    c.setAttribute('r', isFocus ? n.r*1.7 : n.r);
-    c.setAttribute('opacity', focusNode ? (isFocus||isNb?1:0.35) : 1);
+    var sc=isFocus?1.5:1;
+    g.setAttribute('transform','translate('+n.x.toFixed(1)+','+n.y.toFixed(1)+') scale('+sc+')');
+    g.setAttribute('opacity', focusNode ? (isFocus||isNb?1:0.3) : 1);
     t.setAttribute('x',n.x.toFixed(1));
-    t.setAttribute('y',(n.y+n.r+(n.type==='domain'?54:(n.type==='cluster'?32:22))).toFixed(1));
+    t.setAttribute('y',(n.y+n.r*sc+(n.type==='domain'?52:(n.type==='cluster'?30:20))).toFixed(1));
     var showLbl;
     if(n.type==='domain') showLbl=1;
     else if(n.type==='cluster') showLbl = VIEW.w<4200 ? 1 : 0.5;
     else showLbl = (isFocus||isNb) ? 1 : (VIEW.w<1300 ? 0.9 : 0);
-    t.setAttribute('opacity', focusNode ? (isFocus||isNb ? 1 : showLbl*0.25) : showLbl);
+    t.setAttribute('opacity', focusNode ? (isFocus||isNb ? 1 : showLbl*0.2) : showLbl);
   }
 }
 
