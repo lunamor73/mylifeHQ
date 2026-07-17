@@ -2548,7 +2548,8 @@ function mundusCopy() {
 <style>
 #p11{background:var(--bg);align-items:stretch}
 #p11 .top-bar{width:100%;max-width:none}
-.wb-body{position:relative;height:calc(100% - 56px);width:100vw;max-width:none;overflow:hidden;align-self:stretch;flex:1}
+.wb-body{position:relative;height:calc(100% - 56px);width:100vw;max-width:none;overflow:hidden;align-self:stretch;flex:1;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
+.wb-body text{-webkit-user-select:none;user-select:none;pointer-events:none}
 #wb-svg{width:100%;height:100%;display:block;touch-action:none;cursor:grab}
 #wb-svg:active{cursor:grabbing}
 .wb-crumb{position:absolute;top:10px;left:14px;z-index:6;background:#ffffff;border:1.5px solid var(--gold);border-radius:20px;padding:6px 14px;font-size:11px;letter-spacing:0.1em;text-transform:uppercase;color:var(--gold);cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,0.07)}
@@ -4661,12 +4662,21 @@ function buildDOM(){
     if(n.stat==='lit'||n.stat==='rising'||n.type==='centre') ring.setAttribute('class','sm-star-lit');
     gn.appendChild(ring);
     if(n.icon){
-      var s=n.r*1.55;
+      var isPhoto = n.type==='centre';
+      var s = isPhoto ? n.r*2 : n.r*1.55;
+      var clipId='wbclip-'+n.id.replace(/[^a-zA-Z0-9]/g,'_');
+      var cp=document.createElementNS(NS,'clipPath');
+      cp.setAttribute('id',clipId);
+      var cc=document.createElementNS(NS,'circle');
+      cc.setAttribute('r', isPhoto ? n.r-2 : n.r*0.8);
+      cp.appendChild(cc);
+      gn.appendChild(cp);
       var im=document.createElementNS(NS,'image');
       im.setAttribute('x',-s/2);im.setAttribute('y',-s/2);
       im.setAttribute('width',s);im.setAttribute('height',s);
       im.setAttribute('href',n.icon);
-      im.setAttribute('preserveAspectRatio','xMidYMid meet');
+      im.setAttribute('preserveAspectRatio','xMidYMid slice');
+      im.setAttribute('clip-path','url(#'+clipId+')');
       im.style.pointerEvents='none';
       if(n.stat==='dark') im.setAttribute('opacity','0.42');
       else if(n.stat==='fading') im.setAttribute('opacity','0.68');
@@ -4755,7 +4765,9 @@ function flyTo(x,y,w){
 }
 
 function wire(){
+  svg.addEventListener('contextmenu',function(ev){ev.preventDefault();});
   svg.addEventListener('pointerdown',function(ev){
+    ev.preventDefault();
     svg.setPointerCapture(ev.pointerId);
     pointers[ev.pointerId]={x:ev.clientX,y:ev.clientY};
     if(mom){cancelAnimationFrame(mom);mom=null;}
