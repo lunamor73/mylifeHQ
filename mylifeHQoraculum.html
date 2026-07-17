@@ -5122,11 +5122,11 @@ window.selectSolarYear=function(off){
   openSolarYear();
 };
 function syPersonalYear(){
-  // Personal year from numerology: shifts each birthday. 2026→Year 1 (given).
+  // Millman: birth month + day + start-year digits, reduced.
+  // Year 1 ran 12 Jul 2025 → 12 Jul 2026; year starting 12 Jul 2026 is Year 2.
   var r=syRange();
-  var base=2026, baseYear=1;
-  var n=(r.start.getFullYear()-base)+baseYear;
-  return ((n-1)%9)+1;
+  var n=(r.start.getFullYear()-2025)+1;
+  return ((n-1)%9+9)%9+1;
 }
 var PY_MEANING={1:'Seeds — new beginnings, the self re-emerges',2:'Partnership — patience, diplomacy, slow growth',3:'Expression — creativity, joy, visibility',4:'Foundation — structure, work, roots',5:'Change — freedom, movement, the unexpected',6:'Care — home, family, responsibility',7:'Depth — retreat, study, the inner voyage',8:'Harvest — power, abundance, reckoning',9:'Completion — release, forgiveness, the turning'};
 
