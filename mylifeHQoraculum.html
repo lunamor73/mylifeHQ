@@ -4796,10 +4796,12 @@ function layout(){
     });
   });
 
-  var angCursor=-Math.PI/2;
+  // seeded hash for stable asymmetry — the hand-drawn wobble
+  function hsh(s){ var v=0; for(var hi=0;hi<s.length;hi++){ v=(v*31+s.charCodeAt(hi))>>>0; } return (v%1000)/1000; }
+  var angCursor=-Math.PI/2 - Math.PI/4; // domains symmetric: 4 equal quarters
   WEB_WORLD.forEach(function(dom){
     var domW=0; dom.clusters.forEach(function(c){domW+=c._w;});
-    var span=domW/totalW*Math.PI*2;
+    var span=Math.PI/2;
     var domAng=angCursor+span/2;
     var clStats=[], domAct=0;
     var dnode={id:'d:'+dom.key,type:'domain',key:dom.key,label:dom.label,dom:dom.key,
@@ -4814,15 +4816,17 @@ function layout(){
       var sStat = dom.key==='lunamor' ? stat(subR[cl.key]||0,subP[cl.key]||0) : bestStat(iStats);
       if(sStat==='dark') sStat=bestStat(iStats);
       clStats.push(sStat); domAct+=cl._act;
+      var caJ=ca+(hsh(cl.key+'a')-0.5)*clSpan*0.30;
+      var crJ=R_CL+(hsh(cl.key+'r')-0.5)*110;
       var cnode={id:'c:'+cl.key,type:'cluster',key:cl.key,label:cl.label,dom:dom.key,
-        ang:ca, x:Math.cos(ca)*R_CL, y:Math.sin(ca)*R_CL, r:26, stat:sStat,
+        ang:caJ, x:Math.cos(caJ)*crJ, y:Math.sin(caJ)*crJ, r:26, stat:sStat,
         icon:clusterIconFor(cl.key,dom.key), parent:dnode, act:cl._act};
       nodes.push(cnode);
       var m=cl.items.length;
       cl.items.forEach(function(it,ii){
-        var ia=ca + ((ii+0.5)/m - 0.5)*clSpan*0.94;
-        var rr=R_ITS[ii%3];
-        nodes.push({id:'i:'+cl.key+':'+ii,type:'item',label:it,name:it,dom:dom.key,
+        var ia=ca + ((ii+0.5)/m - 0.5)*clSpan*0.94 + (hsh(it)-0.5)*(clSpan/Math.max(1,m))*0.6;
+        var rr=R_ITS[ii%3] + (hsh(it+'r')-0.5)*85;
+        nodes.push({id:'i:'+cl.key+':'+ii,type:'item',label:it,name:it,dom:dom.key,tier:ii%3,
           clusterKey:cl.key, ang:ia, x:Math.cos(ia)*rr, y:Math.sin(ia)*rr, r:18,
           stat:iStats[ii], icon:itemIconFor(it), parent:cnode,
           act:(itR[it]||0)+(itP[it]||0)});
@@ -4877,10 +4881,9 @@ function buildDOM(){
     var sorted=list.slice().sort(function(x,y){return x.ang-y.ang;});
     for(var i2=0;i2<sorted.length;i2++){
       var A=sorted[i2], B=sorted[(i2+1)%sorted.length];
-      var mx=(A.x+B.x)/2*0.94, my=(A.y+B.y)/2*0.94;
       var act=(A.act||0)+(B.act||0);
-      th+='<path d="M'+A.x.toFixed(1)+' '+A.y.toFixed(1)+' Q'+mx.toFixed(1)+' '+my.toFixed(1)+' '+B.x.toFixed(1)+' '+B.y.toFixed(1)
-        +'" fill="none" stroke="'+silk+'" stroke-width="'+(act?w0*1.35:w0).toFixed(2)+'" opacity="'+(act?op0+0.16:op0).toFixed(2)+'"/>';
+      th+='<line x1="'+A.x.toFixed(1)+'" y1="'+A.y.toFixed(1)+'" x2="'+B.x.toFixed(1)+'" y2="'+B.y.toFixed(1)
+        +'" stroke="'+silk+'" stroke-width="'+(act?w0*1.35:w0).toFixed(2)+'" opacity="'+(act?op0+0.16:op0).toFixed(2)+'"/>';
     }
   }
   // ring through the 4 domains, ring through all 21 clusters
@@ -4889,7 +4892,7 @@ function buildDOM(){
   // one ring per item tier — silk passing exactly through every item icon
   for(var t=0;t<R_ITS.length;t++){
     (function(tier){
-      var ring=itNodes.filter(function(n){return Math.abs(Math.hypot(n.x,n.y)-R_ITS[tier])<25;});
+      var ring=itNodes.filter(function(n){return n.tier===tier;});
       ringThrough(ring, 0.9, 0.4);
     })(t);
   }
@@ -4898,7 +4901,7 @@ function buildDOM(){
     var kids=itNodes.filter(function(n){return n.clusterKey===cl.key;}).sort(function(x,y){return x.ang-y.ang;});
     for(var z=0;z<kids.length-1;z++){
       var A3=kids[z], B3=kids[z+1];
-      if(Math.abs(Math.hypot(A3.x,A3.y)-Math.hypot(B3.x,B3.y))<10) continue; // same tier: ring already links
+      if(A3.tier===B3.tier) continue; // same tier: ring already links
       th+='<line x1="'+A3.x.toFixed(1)+'" y1="'+A3.y.toFixed(1)+'" x2="'+B3.x.toFixed(1)+'" y2="'+B3.y.toFixed(1)+'" stroke="'+silk+'" stroke-width="0.7" opacity="0.35"/>';
     }
   });
@@ -4910,7 +4913,7 @@ function buildDOM(){
       var hA=clAngles[i4], hB=clAngles[(i4+1)%S];
       if(i4===S-1) hB+=Math.PI*2;
       var rA2=20+(hl+i4/S)*10, rB2=20+(hl+(i4+1)/S)*10;
-      th+='<path d="M'+(Math.cos(hA)*rA2).toFixed(1)+' '+(Math.sin(hA)*rA2).toFixed(1)+' Q'+(Math.cos((hA+hB)/2)*(rA2+rB2)/2*0.9).toFixed(1)+' '+(Math.sin((hA+hB)/2)*(rA2+rB2)/2*0.9).toFixed(1)+' '+(Math.cos(hB)*rB2).toFixed(1)+' '+(Math.sin(hB)*rB2).toFixed(1)+'" fill="none" stroke="'+silk+'" stroke-width="0.6" opacity="0.35"/>';
+      th+='<line x1="'+(Math.cos(hA)*rA2).toFixed(1)+'" y1="'+(Math.sin(hA)*rA2).toFixed(1)+'" x2="'+(Math.cos(hB)*rB2).toFixed(1)+'" y2="'+(Math.sin(hB)*rB2).toFixed(1)+'" stroke="'+silk+'" stroke-width="0.6" opacity="0.35"/>';
     }
   }
 
@@ -4923,7 +4926,7 @@ function buildDOM(){
     var ns=p[0].split('||');
     var A2=byName[ns[0]], B2=byName[ns[1]];
     if(A2&&B2&&A2!==B2){
-      th+='<path d="'+sagPts(A2.x,A2.y,B2.x,B2.y,0.18)+'" fill="none" stroke="#b8920f" stroke-width="'+(0.8+Math.min(2.2,p[1]*0.4)).toFixed(1)+'" opacity="0.35" stroke-dasharray="3 6"/>';
+      th+='<line x1="'+A2.x.toFixed(1)+'" y1="'+A2.y.toFixed(1)+'" x2="'+B2.x.toFixed(1)+'" y2="'+B2.y.toFixed(1)+'" stroke="#b8920f" stroke-width="'+(0.8+Math.min(2.2,p[1]*0.4)).toFixed(1)+'" opacity="0.35" stroke-dasharray="3 6"/>';
     }
   });
 
