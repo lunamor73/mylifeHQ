@@ -4803,9 +4803,11 @@ function layout(){
     var domW=0; dom.clusters.forEach(function(c){domW+=c._w;});
     var span=Math.PI/2;
     var domAng=angCursor+span/2;
+    // golden-orb stretch: the busier the domain, the further its catching zone bellies out
+    var domScale=0.78 + (domW/totalW)*2.1;
     var clStats=[], domAct=0;
     var dnode={id:'d:'+dom.key,type:'domain',key:dom.key,label:dom.label,dom:dom.key,
-      ang:domAng, x:Math.cos(domAng)*R_DOM, y:Math.sin(domAng)*R_DOM, r:40,
+      ang:domAng, x:Math.cos(domAng)*R_DOM*Math.min(1.35,0.85+domScale*0.3), y:Math.sin(domAng)*R_DOM*Math.min(1.35,0.85+domScale*0.3), r:40, scale:domScale,
       icon:domainIconFor(dom.key)};
     var cw=0;
     dom.clusters.forEach(function(cl){
@@ -4817,7 +4819,7 @@ function layout(){
       if(sStat==='dark') sStat=bestStat(iStats);
       clStats.push(sStat); domAct+=cl._act;
       var caJ=ca+(hsh(cl.key+'a')-0.5)*clSpan*0.30;
-      var crJ=R_CL+(hsh(cl.key+'r')-0.5)*110;
+      var crJ=(R_CL+(hsh(cl.key+'r')-0.5)*110)*domScale;
       var cnode={id:'c:'+cl.key,type:'cluster',key:cl.key,label:cl.label,dom:dom.key,
         ang:caJ, x:Math.cos(caJ)*crJ, y:Math.sin(caJ)*crJ, r:26, stat:sStat,
         icon:clusterIconFor(cl.key,dom.key), parent:dnode, act:cl._act};
@@ -4825,7 +4827,7 @@ function layout(){
       var m=cl.items.length;
       cl.items.forEach(function(it,ii){
         var ia=ca + ((ii+0.5)/m - 0.5)*clSpan*0.94 + (hsh(it)-0.5)*(clSpan/Math.max(1,m))*0.6;
-        var rr=R_ITS[ii%3] + (hsh(it+'r')-0.5)*85;
+        var rr=(R_ITS[ii%3] + (hsh(it+'r')-0.5)*85)*domScale;
         nodes.push({id:'i:'+cl.key+':'+ii,type:'item',label:it,name:it,dom:dom.key,tier:ii%3,
           clusterKey:cl.key, ang:ia, x:Math.cos(ia)*rr, y:Math.sin(ia)*rr, r:18,
           stat:iStats[ii], icon:itemIconFor(it), parent:cnode,
@@ -4929,6 +4931,32 @@ function buildDOM(){
       th+='<line x1="'+A2.x.toFixed(1)+'" y1="'+A2.y.toFixed(1)+'" x2="'+B2.x.toFixed(1)+'" y2="'+B2.y.toFixed(1)+'" stroke="#b8920f" stroke-width="'+(0.8+Math.min(2.2,p[1]*0.4)).toFixed(1)+'" opacity="0.35" stroke-dasharray="3 6"/>';
     }
   });
+
+  // ── anchor strands — long guy-lines like a golden orb web between trees ──
+  var domsByScale=doNodes.slice().sort(function(x,y){return (y.scale||1)-(x.scale||1);});
+  var big=domsByScale[0];
+  if(big){
+    // three long anchors extending from the catching zone's rim outward
+    var bigKids=itNodes.filter(function(n){return n.dom===big.key;});
+    var rim=bigKids.slice().sort(function(x,y){return Math.hypot(y.x,y.y)-Math.hypot(x.x,x.y);}).slice(0,3);
+    rim.forEach(function(n,ri){
+      var d=Math.hypot(n.x,n.y)||1;
+      var fx=n.x/d, fy=n.y/d;
+      var spread=(ri-1)*0.22;
+      var ax=Math.cos(Math.atan2(fy,fx)+spread), ay=Math.sin(Math.atan2(fy,fx)+spread);
+      var far=d+1100+ri*260;
+      th+='<line x1="'+n.x.toFixed(1)+'" y1="'+n.y.toFixed(1)+'" x2="'+(ax*far).toFixed(1)+'" y2="'+(ay*far).toFixed(1)+'" stroke="'+silk+'" stroke-width="1.7" opacity="0.42"/>';
+    });
+    // shorter anchors on the far side — attached to nearer branches
+    doNodes.forEach(function(dn){
+      if(dn===big) return;
+      var kids2=itNodes.filter(function(n){return n.dom===dn.key;});
+      var far2=kids2.slice().sort(function(x,y){return Math.hypot(y.x,y.y)-Math.hypot(x.x,x.y);})[0];
+      if(!far2) return;
+      var d2=Math.hypot(far2.x,far2.y)||1;
+      th+='<line x1="'+far2.x.toFixed(1)+'" y1="'+far2.y.toFixed(1)+'" x2="'+(far2.x/d2*(d2+380)).toFixed(1)+'" y2="'+(far2.y/d2*(d2+380)).toFixed(1)+'" stroke="'+silk+'" stroke-width="1.3" opacity="0.35"/>';
+    });
+  }
 
   var g=document.createElementNS(NS,'g');
   g.innerHTML=th;
@@ -5131,7 +5159,7 @@ function wire(){
     applyView();
   },{passive:false});
   var crumb=document.getElementById('wb-crumb');
-  if(crumb) crumb.addEventListener('click',function(){ flyTo(0,0,1700); hideTip(); });
+  if(crumb) crumb.addEventListener('click',function(){ flyTo(0,0,2100); hideTip(); });
 }
 
 var STATUS_TEXT={lit:'Zenith — overhead, steering by it',rising:'Rising — climbing into view',fading:'Setting — completing this arc',dark:'Horizon — waiting to rise'};
@@ -5153,7 +5181,7 @@ window.openWeb = function(){
     aspect=box.height/Math.max(1,box.width);
     layout();
     buildDOM();
-    VIEW={x:0,y:0,w:1700};
+    VIEW={x:0,y:0,w:2100};
     applyView();
     if(!_wired){ wire(); _wired=true; }
   },60);
