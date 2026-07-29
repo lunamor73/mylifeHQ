@@ -2561,8 +2561,8 @@ function mundusCopy() {
 #p11 .top-bar{width:100%;max-width:none}
 .wb-body{position:absolute;top:56px;left:0;right:0;bottom:0;width:auto;max-width:none;overflow:hidden;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
 .wb-body text{-webkit-user-select:none;user-select:none;pointer-events:none}
-#wb-svg{width:100%;height:100%;display:block;touch-action:none;cursor:grab}
-#wb-svg:active{cursor:grabbing}
+#wb-canvas{position:absolute;inset:0;width:100%;height:100%;display:block;touch-action:none;cursor:grab}
+#wb-canvas:active{cursor:grabbing}
 .wb-crumb{position:absolute;top:10px;left:14px;z-index:6;background:#ffffff;border:1.5px solid var(--gold);border-radius:20px;padding:6px 14px;font-size:11px;letter-spacing:0.1em;text-transform:uppercase;color:var(--gold);cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,0.07)}
 .wb-toggle{position:absolute;top:10px;right:14px;z-index:6;background:#ffffff;border:1.5px solid var(--border);border-radius:20px;padding:6px 14px;font-size:11px;letter-spacing:0.1em;text-transform:uppercase;color:var(--muted);cursor:pointer}
 .wb-wisdom{position:absolute;z-index:8;text-align:center;font-family:Georgia,'Times New Roman',serif;font-style:italic;font-size:17px;line-height:1.5;color:var(--gold);background:rgba(255,255,255,0.94);border:1px solid rgba(184,146,15,0.3);border-radius:14px;padding:14px 20px;opacity:0;transform:translateY(8px);transition:opacity 0.6s ease,transform 0.6s ease;pointer-events:none;box-shadow:0 6px 24px rgba(0,0,0,0.10)}
@@ -2577,8 +2577,7 @@ function mundusCopy() {
   <div class="wb-body">
     <div class="wb-crumb" id="wb-crumb">&#128376; Arakna</div>
     <button class="wb-toggle" onclick="openStarMap()">&#10022; The Bloom</button>
-    <canvas id="wb-canvas" style="position:absolute;inset:0;pointer-events:none;z-index:1"></canvas>
-    <svg id="wb-svg" viewBox="-750 -1050 1500 2100" preserveAspectRatio="xMidYMid meet" style="position:relative;z-index:2"></svg>
+    <canvas id="wb-canvas"></canvas>
     <div class="sm-tooltip" id="wb-tooltip"></div>
   </div>
 </div>
@@ -4998,7 +4997,7 @@ var wEdges=[], wAnchors=[], adj={};
 // Silk is drawn to a canvas, not the SVG DOM. WebKit re-solves layout on every
 // SVG attribute write; 2400 writes a frame is what made Safari crawl. Batched
 // by stroke style, the whole web is ~40 stroke() calls instead.
-var silkGroups=[], silkIdx={}, NODASH=[];
+var silkGroups=[], silkIdx={}, NODASH=[], wbHub=[];
 function pushSilk(a,b,color,w,op,dash){
   var wq=Math.round(w*2)/2, oq=Math.round(op*20)/20;
   var k=color+'|'+wq+'|'+oq+'|'+(dash||'');
@@ -5032,8 +5031,7 @@ function wbRhizome(){
   return map;
 }
 function buildDOM(){
-  svg.innerHTML='';
-  wEdges=[]; wAnchors=[]; adj={}; silkGroups=[]; silkIdx={};
+  wEdges=[]; wAnchors=[]; adj={}; silkGroups=[]; silkIdx={}; wbHub=[];
   var silk='#b9b0a0';
 
   var clNodes=nodes.filter(function(n){return n.type==='cluster';});
@@ -5111,73 +5109,73 @@ function buildDOM(){
     wAnchors.push({a:n, fx:n.x0/d*9000, fy:n.y0/d*9000});
   });
 
-  // tiny hub platform (static)
+  // tiny hub platform (static geometry, drawn to canvas each frame)
   var clAngles=clNodes.map(function(n){return n.ang;}).sort(function(x,y){return x-y;});
-  var S=clAngles.length, hub='';
+  var S=clAngles.length; wbHub=[];
   for(var hl=0;hl<3;hl++){
     for(var i4=0;i4<S;i4++){
       var hA=clAngles[i4], hB=clAngles[(i4+1)%S];
       if(i4===S-1) hB+=Math.PI*2;
       var rA2=20+(hl+i4/S)*10, rB2=20+(hl+(i4+1)/S)*10;
-      hub+='<line x1="'+(Math.cos(hA)*rA2).toFixed(1)+'" y1="'+(Math.sin(hA)*rA2).toFixed(1)+'" x2="'+(Math.cos(hB)*rB2).toFixed(1)+'" y2="'+(Math.sin(hB)*rB2).toFixed(1)+'" stroke="'+silk+'" stroke-width="0.6" opacity="0.35"/>';
+      wbHub.push([Math.cos(hA)*rA2, Math.sin(hA)*rA2, Math.cos(hB)*rB2, Math.sin(hB)*rB2]);
     }
   }
-  var gH=document.createElementNS(NS,'g');
-  gH.innerHTML=hub;
-  svg.appendChild(gH);
 
-  // nodes: group carries ring + icon + label (single transform per frame)
+  // nodes: pre-rendered once into offscreen sprites, then blitted to canvas.
+  // Nothing about a node changes between frames except its position, so there
+  // is no reason to re-rasterise a clipped image 60 times a second.
+  var FONT="-apple-system, BlinkMacSystemFont, 'Helvetica Neue', sans-serif";
   nodes.forEach(function(n){
-    var gn=document.createElementNS(NS,'g');
-    gn.setAttribute('data-id',n.id);
-    gn.style.cursor='pointer';
     var ringCol = n.type==='centre' ? '#b8920f' : n.type==='domain' ? (HUE[n.key]||'#b8920f') : RING[n.stat||'dark'];
-    var ring=document.createElementNS(NS,'circle');
-    ring.setAttribute('r',n.r);
-    ring.setAttribute('fill','#ffffff');
-    ring.setAttribute('stroke',ringCol);
-    ring.setAttribute('stroke-width', n.type==='centre'?4.5:(n.type==='domain'?4:(n.type==='cluster'?3.2:2.4)));
-    if(n.stat==='lit'||n.stat==='rising'||n.type==='centre') ring.setAttribute('class','sm-star-lit');
-    gn.appendChild(ring);
+    var sw = n.type==='centre'?4.5:(n.type==='domain'?4:(n.type==='cluster'?3.2:2.4));
+    var pad = sw+3, box = (n.r+pad)*2;
+    var RES = 3;
+    var c=document.createElement('canvas');
+    c.width=c.height=Math.ceil(box*RES);
+    var g2=c.getContext('2d');
+    g2.setTransform(RES,0,0,RES,box*RES/2,box*RES/2);
+    g2.beginPath(); g2.arc(0,0,n.r,0,Math.PI*2);
+    g2.fillStyle='#ffffff'; g2.fill();
+    g2.lineWidth=sw; g2.strokeStyle=ringCol; g2.stroke();
+    n._spr=c; n._sprBox=box;
     if(n.icon){
       var isPhoto = n.type==='centre';
-      var s = isPhoto ? n.r*2 : n.r*1.55;
-      var clipId='wbclip-'+n.id.replace(/[^a-zA-Z0-9]/g,'_');
-      var cp=document.createElementNS(NS,'clipPath');
-      cp.setAttribute('id',clipId);
-      var cc=document.createElementNS(NS,'circle');
-      cc.setAttribute('r', isPhoto ? n.r-2 : n.r*0.8);
-      cp.appendChild(cc);
-      gn.appendChild(cp);
-      var im=document.createElementNS(NS,'image');
-      im.setAttribute('x',-s/2);im.setAttribute('y',-s/2);
-      im.setAttribute('width',s);im.setAttribute('height',s);
-      im.setAttribute('href',n.icon);
-      im.setAttribute('preserveAspectRatio','xMidYMid slice');
-      im.setAttribute('clip-path','url(#'+clipId+')');
-      im.style.pointerEvents='none';
-      if(n.stat==='dark') im.setAttribute('opacity','0.42');
-      else if(n.stat==='fading') im.setAttribute('opacity','0.68');
-      gn.appendChild(im);
+      var isz = isPhoto ? n.r*2 : n.r*1.55;
+      var clipR = isPhoto ? n.r-2 : n.r*0.8;
+      var im=new Image();
+      im.onload=function(){
+        g2.save();
+        g2.beginPath(); g2.arc(0,0,clipR,0,Math.PI*2); g2.clip();
+        g2.globalAlpha = n.stat==='dark' ? 0.42 : (n.stat==='fading' ? 0.68 : 1);
+        // preserveAspectRatio="xMidYMid slice"
+        var ar=im.width/im.height, dw=isz, dh=isz;
+        if(ar>1) dw=isz*ar; else dh=isz/ar;
+        g2.drawImage(im,-dw/2,-dh/2,dw,dh);
+        g2.restore();
+      };
+      im.src=n.icon;
     }
-    var t=document.createElementNS(NS,'text');
+    // label sprite
     var fs = n.type==='centre'?22:(n.type==='domain'?24:(n.type==='cluster'?15:11));
-    t.setAttribute('x',0);
-    t.setAttribute('y',n.r+fs+4);
-    t.setAttribute('text-anchor','middle');
-    t.setAttribute('font-size',fs);
-    t.setAttribute('font-weight', n.type==='domain'||n.type==='centre'?'700':'500');
-    t.setAttribute('letter-spacing','0.06em');
-    t.setAttribute('fill', n.type==='domain'?(HUE[n.key]||'#444'):(n.stat==='dark'?'#b0b0b0':'#555'));
-    t.textContent = n.label.length>20 ? n.label.slice(0,19)+'…' : n.label;
-    t.style.pointerEvents='none';
-    t.setAttribute('class','wb-lbl wb-lbl-'+n.type);
-    gn.appendChild(t);
-    gn.setAttribute('transform','translate('+n.x0.toFixed(1)+','+n.y0.toFixed(1)+')');
-    svg.appendChild(gn);
-    n._el=gn;
+    var txt = n.label.length>20 ? n.label.slice(0,19)+'\u2026' : n.label;
+    var weight = (n.type==='domain'||n.type==='centre')?'700':'500';
+    var col = n.type==='domain'?(HUE[n.key]||'#444'):(n.stat==='dark'?'#b0b0b0':'#555');
+    var lc=document.createElement('canvas');
+    var lg=lc.getContext('2d');
+    var font=weight+' '+(fs*RES)+'px '+FONT;
+    lg.font=font;
+    try{ lg.letterSpacing=(fs*RES*0.06)+'px'; }catch(e){}
+    var tw=lg.measureText(txt).width;
+    lc.width=Math.ceil(tw)+8; lc.height=Math.ceil(fs*RES*1.6);
+    lg.font=font;
+    try{ lg.letterSpacing=(fs*RES*0.06)+'px'; }catch(e){}
+    lg.fillStyle=col; lg.textAlign='center'; lg.textBaseline='middle';
+    lg.fillText(txt, lc.width/2, lc.height/2);
+    n._lbl=lc;
+    n._lblW=lc.width/RES; n._lblH=lc.height/RES;
+    n._lblY=n.r+fs+4;
+    n._twk=(n.stat==='lit'||n.stat==='rising'||n.type==='centre');
   });
-  _lblI=null;_lblC=null;_lastIt=null;_lastCl=null;
   applyView();
 }
 
@@ -5187,16 +5185,15 @@ function silkResize(){
   wbCv=document.getElementById('wb-canvas');
   if(!wbCv) return;
   wbCtx=wbCv.getContext('2d');
-  var r=svg.getBoundingClientRect();
+  var r=wbCv.parentElement.getBoundingClientRect();
   _cvW=Math.max(1,r.width); _cvH=Math.max(1,r.height);
   wbDpr=Math.min(2, window.devicePixelRatio||1);
   wbCv.width=Math.round(_cvW*wbDpr);
   wbCv.height=Math.round(_cvH*wbDpr);
-  wbCv.style.width=_cvW+'px';
-  wbCv.style.height=_cvH+'px';
 }
 function drawSilk(){
   if(!wbCtx) return;
+  var t=performance.now();
   var W=VIEW.w, H=W*aspect;
   var sc=_cvW/W*wbDpr;
   wbCtx.setTransform(1,0,0,1,0,0);
@@ -5231,21 +5228,43 @@ function drawSilk(){
     }
     wbCtx.stroke();
   }
+  if(wbHub.length){
+    wbCtx.strokeStyle='#b9b0a0'; wbCtx.globalAlpha=0.35; wbCtx.lineWidth=0.6;
+    wbCtx.setLineDash(NODASH); wbCtx.beginPath();
+    for(var hb=0;hb<wbHub.length;hb++){
+      var Hb=wbHub[hb];
+      wbCtx.moveTo(Hb[0],Hb[1]); wbCtx.lineTo(Hb[2],Hb[3]);
+    }
+    wbCtx.stroke();
+  }
+
+  // ── nodes: blit pre-rendered sprites, cull anything off-screen ───────────
+  var L=VIEW.x-W/2, T=VIEW.y-H/2, R=L+W, B=T+H;
+  var itOn = W<1500, clOp = W<2400 ? 1 : 0.4;
+  var twk = 0.55+0.45*Math.abs(Math.cos(t*0.00098));
+  wbCtx.globalAlpha=1;
+  for(var k=0;k<nodes.length;k++){
+    var n=nodes[k], hb2=n._sprBox/2;
+    if(n._tx+hb2<L||n._tx-hb2>R||n._ty+hb2<T||n._ty-hb2>B) { n._vis=false; continue; }
+    n._vis=true;
+    wbCtx.globalAlpha = n._twk ? twk : 1;
+    wbCtx.drawImage(n._spr, n._tx-hb2, n._ty-hb2, n._sprBox, n._sprBox);
+  }
+  wbCtx.globalAlpha=1;
+  for(var k2=0;k2<nodes.length;k2++){
+    var n2=nodes[k2];
+    if(!n2._vis||!n2._lbl) continue;
+    var op = n2.type==='item' ? (itOn?1:0) : (n2.type==='cluster' ? clOp : 1);
+    if(!op) continue;
+    wbCtx.globalAlpha=op;
+    wbCtx.drawImage(n2._lbl, n2._tx-n2._lblW/2, n2._ty+n2._lblY-n2._lblH/2, n2._lblW, n2._lblH);
+  }
   wbCtx.globalAlpha=1;
 }
 
 // ── View / LOD ──────────────────────────────────────────────────────────────
-var _lblI=null,_lblC=null,_lastIt=null,_lastCl=null,_vbRaf=null;
-function applyView(){
-  var W=VIEW.w, H=W*aspect;
-  svg.setAttribute('viewBox',(VIEW.x-W/2)+' '+(VIEW.y-H/2)+' '+W+' '+H);
-  drawSilk();
-  if(!_lblI){ _lblI=Array.prototype.slice.call(svg.querySelectorAll('.wb-lbl-item')); _lblC=Array.prototype.slice.call(svg.querySelectorAll('.wb-lbl-cluster')); }
-  var itOn = W<1500 ? 1 : 0;
-  var clOp = W<2400 ? 1 : 0.4;
-  if(itOn!==_lastIt){ _lastIt=itOn; for(var i=0;i<_lblI.length;i++) _lblI[i].style.opacity=itOn; }
-  if(clOp!==_lastCl){ _lastCl=clOp; for(var j=0;j<_lblC.length;j++) _lblC[j].style.opacity=clOp; }
-}
+var _vbRaf=null;
+function applyView(){ drawSilk(); }
 function requestView(){
   if(_vbRaf) return;
   _vbRaf=requestAnimationFrame(function(){ _vbRaf=null; applyView(); });
@@ -5317,16 +5336,9 @@ function animTick(){
     n._tx=n.x0+n.ox+Math.sin(t*0.00052+ph)*sway;
     n._ty=n.y0+n.oy+Math.cos(t*0.00041+ph*1.3)*sway*0.8;
   }
-  // all silk in one canvas pass
+  // the entire web -- silk, anchors, nodes, labels -- in one canvas pass.
+  // Zero DOM writes per frame.
   drawSilk();
-  // nodes stay SVG (icons, labels) — but only write a transform if it moved
-  var tol=VIEW.w*0.0006;
-  for(var m=0;m<nodes.length;m++){
-    var nd=nodes[m];
-    if(Math.abs(nd._tx-nd._px)<tol && Math.abs(nd._ty-nd._py)<tol) continue;
-    nd._px=nd._tx; nd._py=nd._ty;
-    nd._el.setAttribute('transform','translate('+nd._tx.toFixed(1)+','+nd._ty.toFixed(1)+')');
-  }
   requestAnimationFrame(animTick);
 }
 
@@ -5474,7 +5486,7 @@ var _wired=false;
 window.openWeb = function(){
   nav('p11');
   setTimeout(function(){
-    svg=document.getElementById('wb-svg');
+    svg=document.getElementById('wb-canvas');
     var box=svg.parentElement.getBoundingClientRect();
     aspect=box.height/Math.max(1,box.width);
     silkResize();
