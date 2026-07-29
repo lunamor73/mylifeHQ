@@ -4267,10 +4267,10 @@ function buildGraph(){
     var J={ head:n, rim:rim, arms:arms, all:[n].concat(rim,arms), R0:R0,
             // a bigger bell is a slower animal: longer stroke, heavier water,
             // less thrust per unit mass, more reluctance to turn
-            period: 3200+R0*9.5,
+            period: 6400+R0*19,
             thrust: 26/Math.pow(R0/230,0.55),
             damp:   0.938+0.010*Math.min(1,R0/460),
-            turn:   0.020/Math.pow(R0/230,0.6),
+            turn:   0.010/Math.pow(R0/230,0.6),
             t0: Math.random()*8000, c:0, pc:0 };
     var a0=Math.atan2(n.y,n.x);
     J.hx=Math.cos(a0); J.hy=Math.sin(a0);
@@ -4302,14 +4302,14 @@ function buildGraph(){
 // and become themselves — bell, dome, trailing tentacles. Drawn back into the
 // gravity of the centre they lose those proportions and fuse into something
 // else: one slow spidering thing. It breathes between the two, forever.
-var CYCLE=252000, smT0=performance.now(), smDisp=0;
+var CYCLE=504000, smT0=performance.now(), smDisp=0;
 function bloomCycle(_t){
   var cp=((_t-smT0)%CYCLE)/CYCLE, want;
   if(cp<0.40)      want=0;                      // gathered — the composite
   else if(cp<0.53) want=(cp-0.40)/0.13;         // repel apart
   else if(cp<0.87) want=1;                      // four separate animals
   else             want=1-(cp-0.87)/0.13;       // drawn back in
-  smDisp+=(want-smDisp)*0.0075;                 // never a corner, always a swell
+  smDisp+=(want-smDisp)*0.0038;                 // never a corner, always a swell
 }
 
 function pulseJellies(_t){
@@ -4330,7 +4330,7 @@ function pulseJellies(_t){
     }
     // heading: a slow private wander, the bloom's shared drift, and a turn
     // away from the edge of the dish before it gets there
-    var wob=Math.sin(_t*0.00013+ji*2.2)*0.6+Math.sin(_t*0.00007+ji*1.1)*0.4;
+    var wob=Math.sin(_t*0.000065+ji*2.2)*0.6+Math.sin(_t*0.000035+ji*1.1)*0.4;
     var ax=-J.hy*wob, ay=J.hx*wob;
     // turn away from whoever is nearest — jellyfish keep company, not formation
     for(var jk=0;jk<jellies.length;jk++){
@@ -4396,9 +4396,9 @@ function tick(){
     }
   }
   // ── the turn: commitment eases in, and travels outward ──────────────────
-  fMix += ((focusOn?1:0)-fMix)*0.0075;
-  if(!focusOn && fMix<0.006 && focusNode){ focusNode=null; smFam={}; fMix=0; }
-  VIEW.w += ((VIEW.tw||VIEW.w)-VIEW.w)*0.011;
+  fMix += ((focusOn?1:0)-fMix)*0.0026;
+  if(!focusOn && fMix<0.004 && focusNode){ focusNode=null; smFam={}; fMix=0; }
+  VIEW.w += ((VIEW.tw||VIEW.w)-VIEW.w)*0.0055;
 
   for(var n=0;n<nodes.length;n++){
     var nd=nodes[n];
@@ -4453,13 +4453,13 @@ function tick(){
     if(r>0.001){
       if(nd===focusNode){
         // swims to the centre and settles — no snap, no overshoot
-        nd.vx+=((0-nd.x)*0.0075-nd.vx*0.055)*r;
-        nd.vy+=((0-nd.y)*0.0075-nd.vy*0.055)*r;
+        nd.vx+=((0-nd.x)*0.0042-nd.vx*0.050)*r;
+        nd.vy+=((0-nd.y)*0.0042-nd.vy*0.050)*r;
       } else if(smFam[nd.id]){
-        nd.vx+=(0-nd.x)*0.0022*alpha*r; nd.vy+=(0-nd.y)*0.0022*alpha*r;
+        nd.vx+=(0-nd.x)*0.0013*alpha*r; nd.vy+=(0-nd.y)*0.0013*alpha*r;
       } else {
         // everyone else eases out to a far ring, damped so they glide onto it
-        var f2=((1650-dcen)*0.0014-((nd.vx*nd.x+nd.vy*nd.y)/dcen)*0.050)*alpha*r;
+        var f2=((1650-dcen)*0.0008-((nd.vx*nd.x+nd.vy*nd.y)/dcen)*0.048)*alpha*r;
         nd.vx+=nd.x/dcen*f2; nd.vy+=nd.y/dcen*f2;
       }
       if(dcen>2600){ nd.vx-=nd.x/dcen*(dcen-2600)*0.008*r; nd.vy-=nd.y/dcen*(dcen-2600)*0.008*r; }
@@ -4468,12 +4468,12 @@ function tick(){
   // integrate — the water is a field, not a per-star wiggle. Drift depends on
   // WHERE a star is, so neighbours are carried together in eddies instead of
   // each twitching to its own clock.
-  var ph=_t*0.00019;
-  var breath=Math.sin(_t*0.00021)*0.055;   // slow tidal swell of the whole bloom
+  var ph=_t*0.000095;
+  var breath=Math.sin(_t*0.000105)*0.028;  // slow tidal swell of the whole bloom
   for(var m=0;m<nodes.length;m++){
     var q=nodes[m];
     if(q._drag) { q.vx=0;q.vy=0; continue; }
-    var cur=(0.052+(1-(q.grav||0))*0.088)*(q._depth===1?0.30:(q._depth===2?1:0.55));
+    var cur=(0.026+(1-(q.grav||0))*0.044)*(q._depth===1?0.30:(q._depth===2?1:0.55));
     // curl of a slow-turning field — sin of y drives x, cos of x drives y
     q.vx+=(Math.sin(q.y*0.00112+ph)+0.55*Math.sin(q.y*0.00263-ph*1.7))*cur;
     q.vy+=(Math.cos(q.x*0.00094-ph*1.2)+0.55*Math.cos(q.x*0.00218+ph*0.8))*cur;
@@ -4534,8 +4534,8 @@ function tick(){
     rotateAll(spinV);
     spinV*=0.985;
   }
-  rotateAll(0.00009);   // the whole bloom turns under the current, always
-  alpha=Math.max(0.035, alpha*0.9986);
+  rotateAll(0.000045);  // the whole bloom turns under the current, always
+  alpha=Math.max(0.035, alpha*0.9993);
 }
 
 function rotateAll(angle){
@@ -4750,7 +4750,7 @@ function render(){
 function loop(){
   if(!document.getElementById('p10').classList.contains('active')){ running=false; return; }
   // 30s of stillness: the web settles back to its resting shape
-  if(focusOn && performance.now()-lastTouch>30000){ alpha=0.9; smRelease(); hideTip(); }
+  if(focusOn && performance.now()-lastTouch>45000){ alpha=0.9; smRelease(); hideTip(); }
   tick(); render();
   requestAnimationFrame(loop);
 }
