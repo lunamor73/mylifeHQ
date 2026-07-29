@@ -4270,7 +4270,7 @@ function tick(){
       var d2=dx2*dx2+dy2*dy2;
       if(d2>640000) continue;
       var d3=Math.sqrt(d2)||1;
-      var rep=(a.type==='domain'||b.type==='domain')?3400:950;
+      var rep=(a.type==='domain'||b.type==='domain')?1500:400;
       var f2=rep/(d2+800)*alpha;
       var fx2=dx2/d3*f2, fy2=dy2/d3*f2;
       a.vx-=fx2; a.vy-=fy2;
@@ -4295,8 +4295,11 @@ function tick(){
       }
       if(dcen2>2600){ nd.vx-=nd.x/dcen2*(dcen2-2600)*0.008; nd.vy-=nd.y/dcen2*(dcen2-2600)*0.008; }
     } else {
-      var gpull=0.0010+0.0085*(nd.grav||0);
-      nd.vx+=(0-nd.x)*gpull*alpha; nd.vy+=(0-nd.y)*gpull*alpha;
+      // gravity by devotion — never fully surrenders to alpha decay, or the
+      // collision solver would jam the ordering wherever it happened to land
+      var gpull=0.0012+0.0150*(nd.grav||0);
+      var ga=Math.max(0.3,alpha);
+      nd.vx+=(0-nd.x)*gpull*ga; nd.vy+=(0-nd.y)*gpull*ga;
       var dcen=Math.hypot(nd.x,nd.y);
       if(dcen>2300){ nd.vx-=nd.x/dcen*(dcen-2300)*0.008; nd.vy-=nd.y/dcen*(dcen-2300)*0.008; }
       // ocean current handled in integrate loop
@@ -4312,6 +4315,42 @@ function tick(){
     q.vx*=0.94; q.vy*=0.94;
     q.x+=q.vx; q.y+=q.vy;
   }
+  // ── hard bodies: stars meet and part, they never sit on top of each other.
+  // Positional relaxation, weighted by mass, so a heavy star holds its ground
+  // and a light one is the one that gives way.
+  var REST=0.32, ITER=3;
+  for(var it=0;it<ITER;it++){
+    for(var ci=0;ci<nodes.length;ci++){
+      var A=nodes[ci];
+      var iA = A._drag ? 0 : (A===focusNode ? 0 : 1/A._m);
+      for(var cj=ci+1;cj<nodes.length;cj++){
+        var B=nodes[cj];
+        var cdx=B.x-A.x, cdy=B.y-A.y;
+        var rr=A._cr+B._cr;
+        var cd2=cdx*cdx+cdy*cdy;
+        if(cd2>=rr*rr) continue;
+        var iB = B._drag ? 0 : (B===focusNode ? 0 : 1/B._m);
+        var isum=iA+iB;
+        if(isum<=0) continue;
+        var cd=Math.sqrt(cd2);
+        var nx,ny;
+        if(cd<0.001){ var ang=(ci*2.399+cj); nx=Math.cos(ang); ny=Math.sin(ang); cd=0.001; }
+        else { nx=cdx/cd; ny=cdy/cd; }
+        var overlap=rr-cd;
+        A.x-=nx*overlap*(iA/isum); A.y-=ny*overlap*(iA/isum);
+        B.x+=nx*overlap*(iB/isum); B.y+=ny*overlap*(iB/isum);
+        if(it===0){
+          var rvn=(B.vx-A.vx)*nx+(B.vy-A.vy)*ny;
+          if(rvn<0){
+            var imp=-(1+REST)*rvn/isum;
+            A.vx-=nx*imp*iA; A.vy-=ny*imp*iA;
+            B.vx+=nx*imp*iB; B.vy+=ny*imp*iB;
+          }
+        }
+      }
+    }
+  }
+
   // spin momentum
   if(Math.abs(spinV)>0.0004){
     rotateAll(spinV);
@@ -4352,6 +4391,9 @@ function buildDOM(){
              : itemIconFor(n.name);
     var R = n.type==='domain' ? 64 : (n.type==='cluster' ? 38 : 22);
     n.r = R;
+    // hard-body: personal space, and how easily this star is shoved
+    n._cr = R + (n.type==='item'?9:12);
+    n._m  = (n.type==='domain'?6:(n.type==='cluster'?3:1)) * (1 + 1.6*(n.grav||0));
     var ringCol = n.type==='domain' ? (DOM_HUE[n.dom]||'#b8920f') : COLORS[n.stat||'dark'].fill;
     var sw = n.type==='domain'?5:(n.type==='cluster'?4:3);
     var box=(R+sw+3)*2;
@@ -4530,7 +4572,7 @@ function loop(){
   if(!document.getElementById('p10').classList.contains('active')){ running=false; return; }
   // 30s of stillness: the web settles back to its resting shape
   if(focusNode && performance.now()-lastTouch>30000){
-    focusNode=null; smFam={}; alpha=0.9; VIEW.w=3400; hideTip();
+    focusNode=null; smFam={}; alpha=0.9; VIEW.w=3900; hideTip();
     var cr=document.getElementById('sm-crumb'); if(cr) cr.textContent='✦ Universe';
   }
   tick(); render();
@@ -4695,7 +4737,7 @@ function wire(){
 
   var crumb=document.getElementById('sm-crumb');
   if(crumb) crumb.addEventListener('click',function(){
-    focusNode=null; smFam={}; alpha=1; VIEW.w=3400; hideTip();
+    focusNode=null; smFam={}; alpha=1; VIEW.w=3900; hideTip();
     crumb.textContent='✦ Universe';
   });
 }
@@ -4768,7 +4810,7 @@ window.openStarMap = function(){
     smResize();
     buildGraph();
     buildDOM();
-    focusNode=null; VIEW.w=3400; alpha=1; spinV=0;
+    focusNode=null; VIEW.w=3900; alpha=1; spinV=0;
     render();   // first frame synchronously — don't wait on rAF
     if(!_wired){
       wire();
