@@ -4741,6 +4741,7 @@ window.openStarMap = function(){
     buildGraph();
     buildDOM();
     focusNode=null; VIEW.w=3400; alpha=1; spinV=0;
+    render();   // first frame synchronously — don't wait on rAF
     if(!_wired){
       wire();
       window.addEventListener('resize',function(){
