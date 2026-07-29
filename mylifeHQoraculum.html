@@ -4251,16 +4251,26 @@ function buildGraph(){
 // ── Physics ─────────────────────────────────────────────────────────────────
 function tick(){
   var _t=performance.now();
-  // spring forces — soft, underwater
+  // tethers, not strings. A spring with no damping oscillates — that IS a
+  // pluck. These are slack near their rest length and bleed off any relative
+  // motion along their own axis, so nothing ever rings.
   for(var e=0;e<edges.length;e++){
     var ed=edges[e];
     var dx=ed.b.x-ed.a.x, dy=ed.b.y-ed.a.y;
     var d=Math.sqrt(dx*dx+dy*dy)||1;
-    var f=(d-ed.len)*ed.k*alpha*0.55;
-    var fx=dx/d*f, fy=dy/d*f;
+    var slack=ed.len*0.22;              // dead-zone: fish don't correct constantly
+    var off=d-ed.len;
+    off = off>slack ? off-slack : (off<-slack ? off+slack : 0);
+    var nx=dx/d, ny=dy/d;
+    var f=off*ed.k*alpha*0.30;
+    // axial damping — soaks up the ring before it starts
+    var rvn=(ed.b.vx-ed.a.vx)*nx+(ed.b.vy-ed.a.vy)*ny;
+    f += rvn*0.085;
+    var fx=nx*f, fy=ny*f;
     ed.a.vx+=fx; ed.a.vy+=fy;
     ed.b.vx-=fx; ed.b.vy-=fy;
   }
+  for(var z=0;z<nodes.length;z++){ nodes[z]._ax=0; nodes[z]._ay=0; nodes[z]._an=0; }
   // repulsion
   for(var i=0;i<nodes.length;i++){
     var a=nodes[i];
@@ -4275,6 +4285,11 @@ function tick(){
       var fx2=dx2/d3*f2, fy2=dy2/d3*f2;
       a.vx-=fx2; a.vy-=fy2;
       b.vx+=fx2; b.vy+=fy2;
+      // school of fish: take some of your heading from those close by
+      if(d2<200000){
+        a._ax+=b.vx; a._ay+=b.vy; a._an++;
+        b._ax+=a.vx; b._ay+=a.vy; b._an++;
+      }
     }
   }
   // centering
@@ -4305,20 +4320,34 @@ function tick(){
       // ocean current handled in integrate loop
     }
   }
-  // integrate — drifting in water, swayed by slow currents
+  // integrate — the water is a field, not a per-star wiggle. Drift depends on
+  // WHERE a star is, so neighbours are carried together in eddies instead of
+  // each twitching to its own clock.
+  var ph=_t*0.00019;
+  var breath=Math.sin(_t*0.00021)*0.055;   // slow tidal swell of the whole bloom
   for(var m=0;m<nodes.length;m++){
     var q=nodes[m];
     if(q._drag) { q.vx=0;q.vy=0; continue; }
-    var swirl=0.055+(1-(q.grav||0))*0.095;
-    q.vx+=Math.sin(_t*0.00042+m*0.73)*swirl;
-    q.vy+=Math.cos(_t*0.00034+m*1.11)*swirl;
-    q.vx*=0.94; q.vy*=0.94;
+    // schooling: ease toward the heading of those nearby
+    if(q._an){
+      q.vx+=(q._ax/q._an-q.vx)*0.048;
+      q.vy+=(q._ay/q._an-q.vy)*0.048;
+    }
+    var cur=0.052+(1-(q.grav||0))*0.088;
+    // curl of a slow-turning field — sin of y drives x, cos of x drives y
+    q.vx+=(Math.sin(q.y*0.00112+ph)+0.55*Math.sin(q.y*0.00263-ph*1.7))*cur;
+    q.vy+=(Math.cos(q.x*0.00094-ph*1.2)+0.55*Math.cos(q.x*0.00218+ph*0.8))*cur;
+    // breathing: the whole bloom swells and draws in, lighter stars more so
+    var dcb=Math.sqrt(q.x*q.x+q.y*q.y)||1;
+    var br=breath*(0.45+0.55*(1-(q.grav||0)));
+    q.vx+=q.x/dcb*br; q.vy+=q.y/dcb*br;
+    q.vx*=0.935; q.vy*=0.935;
     q.x+=q.vx; q.y+=q.vy;
   }
   // ── hard bodies: stars meet and part, they never sit on top of each other.
   // Positional relaxation, weighted by mass, so a heavy star holds its ground
   // and a light one is the one that gives way.
-  var REST=0.32, ITER=3;
+  var SOFT=0.55, ITER=2;
   for(var it=0;it<ITER;it++){
     for(var ci=0;ci<nodes.length;ci++){
       var A=nodes[ci];
@@ -4336,15 +4365,23 @@ function tick(){
         var nx,ny;
         if(cd<0.001){ var ang=(ci*2.399+cj); nx=Math.cos(ang); ny=Math.sin(ang); cd=0.001; }
         else { nx=cdx/cd; ny=cdy/cd; }
-        var overlap=rr-cd;
+        // eased apart over several frames rather than snapped apart in one —
+        // membranes deforming, not marbles striking
+        var overlap=(rr-cd)*SOFT;
         A.x-=nx*overlap*(iA/isum); A.y-=ny*overlap*(iA/isum);
         B.x+=nx*overlap*(iB/isum); B.y+=ny*overlap*(iB/isum);
         if(it===0){
-          var rvn=(B.vx-A.vx)*nx+(B.vy-A.vy)*ny;
-          if(rvn<0){
-            var imp=-(1+REST)*rvn/isum;
-            A.vx-=nx*imp*iA; A.vy-=ny*imp*iA;
-            B.vx+=nx*imp*iB; B.vy+=ny*imp*iB;
+          var rvn2=(B.vx-A.vx)*nx+(B.vy-A.vy)*ny;
+          if(rvn2<0){
+            // absorb the approach instead of reflecting it (no restitution),
+            // and let them slide past one another along the tangent
+            var absb=-rvn2*0.82/isum;
+            A.vx-=nx*absb*iA; A.vy-=ny*absb*iA;
+            B.vx+=nx*absb*iB; B.vy+=ny*absb*iB;
+            var tx=-ny, ty=nx;
+            var rvt=((B.vx-A.vx)*tx+(B.vy-A.vy)*ty)*0.16/isum;
+            A.vx+=tx*rvt*iA; A.vy+=ty*rvt*iA;
+            B.vx-=tx*rvt*iB; B.vy-=ty*rvt*iB;
           }
         }
       }
@@ -4356,6 +4393,7 @@ function tick(){
     rotateAll(spinV);
     spinV*=0.985;
   }
+  rotateAll(0.00019);   // the whole body turns under the current, always
   alpha=Math.max(0.035, alpha*0.996);
 }
 
