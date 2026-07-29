@@ -2576,7 +2576,6 @@ function mundusCopy() {
   <div class="wb-body">
     <div class="wb-crumb" id="wb-crumb">&#128376; Arakna</div>
     <button class="wb-toggle" onclick="openStarMap()">&#10022; The Bloom</button>
-    <button class="wb-toggle" id="wb-rhz-btn" style="top:46px;color:#7a6fa8;border-color:#7a6fa8" onclick="wbToggleRhizome()">&#9672; Rhizome</button>
     <svg id="wb-svg" viewBox="-750 -1050 1500 2100" preserveAspectRatio="xMidYMid meet"></svg>
     <div class="sm-tooltip" id="wb-tooltip"></div>
   </div>
@@ -4952,7 +4951,6 @@ function link(a,b){
 // Rhizome: designed kinship (tags / related). Lateral threads -- not hierarchy,
 // not habit, but the kinship seeded into the map itself. Where a rhizome thread
 // and a lived thread agree, the strand deepens.
-var wbRhzOn=true;
 function wbRhizome(){
   var map={};
   try{
@@ -4966,18 +4964,6 @@ function wbRhizome(){
   }catch(e){}
   return map;
 }
-function wbToggleRhizome(){
-  wbRhzOn=!wbRhzOn;
-  var g=document.getElementById('wb-rhz');
-  if(g) g.style.display=wbRhzOn?'':'none';
-  var b=document.getElementById('wb-rhz-btn');
-  if(b){
-    b.innerHTML=(wbRhzOn?'&#9672;':'&#9671;')+' Rhizome';
-    b.style.color=wbRhzOn?'#7a6fa8':'';
-    b.style.borderColor=wbRhzOn?'#7a6fa8':'';
-  }
-}
-
 function buildDOM(){
   svg.innerHTML='';
   wEdges=[]; wAnchors=[]; adj={};
@@ -5055,8 +5041,6 @@ function buildDOM(){
       link(A3,B3);
     });
   });
-  gR.style.display=wbRhzOn?'':'none';
-
   // infinity anchors: outermost point per angular bin, thread to beyond
   var BIN_N=24, bins={};
   ringNodes.forEach(function(n){
