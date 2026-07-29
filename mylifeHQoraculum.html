@@ -2576,6 +2576,7 @@ function mundusCopy() {
   <div class="wb-body">
     <div class="wb-crumb" id="wb-crumb">&#128376; Arakna</div>
     <button class="wb-toggle" onclick="openStarMap()">&#10022; The Bloom</button>
+    <button class="wb-toggle" id="wb-rhz-btn" style="top:46px;color:#7a6fa8;border-color:#7a6fa8" onclick="wbToggleRhizome()">&#9672; Rhizome</button>
     <svg id="wb-svg" viewBox="-750 -1050 1500 2100" preserveAspectRatio="xMidYMid meet"></svg>
     <div class="sm-tooltip" id="wb-tooltip"></div>
   </div>
@@ -4948,6 +4949,35 @@ function link(a,b){
   adj[a.id].push(b); adj[b.id].push(a);
 }
 
+// Rhizome: designed kinship (tags / related). Lateral threads -- not hierarchy,
+// not habit, but the kinship seeded into the map itself. Where a rhizome thread
+// and a lived thread agree, the strand deepens.
+var wbRhzOn=true;
+function wbRhizome(){
+  var map={};
+  try{
+    Object.keys(DATA).forEach(function(k){
+      (DATA[k]||[]).forEach(function(sec){
+        (sec.items||[]).forEach(function(it){
+          if(it&&it.id&&(it.related||it.tags)) map[it.id]={tags:it.tags||[],related:it.related||[]};
+        });
+      });
+    });
+  }catch(e){}
+  return map;
+}
+function wbToggleRhizome(){
+  wbRhzOn=!wbRhzOn;
+  var g=document.getElementById('wb-rhz');
+  if(g) g.style.display=wbRhzOn?'':'none';
+  var b=document.getElementById('wb-rhz-btn');
+  if(b){
+    b.innerHTML=(wbRhzOn?'&#9672;':'&#9671;')+' Rhizome';
+    b.style.color=wbRhzOn?'#7a6fa8':'';
+    b.style.borderColor=wbRhzOn?'#7a6fa8':'';
+  }
+}
+
 function buildDOM(){
   svg.innerHTML='';
   wEdges=[]; wAnchors=[]; adj={};
@@ -5003,6 +5033,29 @@ function buildDOM(){
       var A2=byName[ns2[0]], B2=byName[ns2[1]];
       if(A2&&B2&&A2!==B2) strand(A2,B2,'#b8920f',(0.8+Math.min(2.2,p[1]*0.4)).toFixed(1),0.35,'3 6');
     });
+
+  // rhizome silk: designed kinship, drawn laterally across the hierarchy
+  var gR=document.createElementNS(NS,'g');
+  gR.setAttribute('id','wb-rhz');
+  gS.parentNode.appendChild(gR);
+  var rhz=wbRhizome(), seenR={};
+  Object.keys(rhz).forEach(function(nm){
+    var A3=byName[nm]; if(!A3) return;
+    (rhz[nm].related||[]).forEach(function(rn){
+      var B3=byName[rn]; if(!B3||B3===A3) return;
+      var pk=A3.id<B3.id?A3.id+'>'+B3.id:B3.id+'>'+A3.id;
+      if(seenR[pk]) return; seenR[pk]=1;
+      var ck=A3.name<B3.name?A3.name+'||'+B3.name:B3.name+'||'+A3.name;
+      var lived=wbCooc[ck]||0;
+      var l3=mkLine(A3,B3, lived?'#6f63a4':'#a9a4b8',
+                    lived?(1.2+Math.min(1.6,lived*0.3)).toFixed(1):0.8,
+                    lived?0.52:0.24, lived?'1 5':'1 8');
+      gR.appendChild(l3);
+      wEdges.push({a:A3,b:B3,el:l3});
+      link(A3,B3);
+    });
+  });
+  gR.style.display=wbRhzOn?'':'none';
 
   // infinity anchors: outermost point per angular bin, thread to beyond
   var BIN_N=24, bins={};
