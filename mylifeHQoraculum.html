@@ -2568,6 +2568,11 @@ function mundusCopy() {
 .wb-wisdom{position:absolute;z-index:8;text-align:center;font-family:Georgia,'Times New Roman',serif;font-style:italic;font-size:17px;line-height:1.5;color:var(--gold);background:rgba(255,255,255,0.94);border:1px solid rgba(184,146,15,0.3);border-radius:14px;padding:14px 20px;opacity:0;transform:translateY(8px);transition:opacity 0.6s ease,transform 0.6s ease;pointer-events:none;box-shadow:0 6px 24px rgba(0,0,0,0.10)}
 .wb-wisdom.in{opacity:1;transform:translateY(0)}
 </style>
+<style>
+#wb-perf{position:absolute;left:14px;bottom:14px;z-index:9;background:rgba(0,0,0,0.78);color:#7dffb0;
+  font:11px/1.45 ui-monospace,SFMono-Regular,Menlo,monospace;padding:8px 11px;border-radius:8px;
+  white-space:pre;pointer-events:none;display:none}
+</style>
 <div id="p11" class="page">
   <div class="top-bar">
     <button class="back-btn" onclick="nav('p1')">&#8592; Back</button>
@@ -2579,6 +2584,7 @@ function mundusCopy() {
     <button class="wb-toggle" onclick="openStarMap()">&#10022; The Bloom</button>
     <canvas id="wb-canvas"></canvas>
     <div class="sm-tooltip" id="wb-tooltip"></div>
+    <div id="wb-perf"></div>
   </div>
 </div>
 
@@ -5242,11 +5248,12 @@ function drawSilk(){
   var L=VIEW.x-W/2, T=VIEW.y-H/2, R=L+W, B=T+H;
   var itOn = W<1500, clOp = W<2400 ? 1 : 0.4;
   var twk = 0.55+0.45*Math.abs(Math.cos(t*0.00098));
+  var _drawn=0;
   wbCtx.globalAlpha=1;
   for(var k=0;k<nodes.length;k++){
     var n=nodes[k], hb2=n._sprBox/2;
     if(n._tx+hb2<L||n._tx-hb2>R||n._ty+hb2<T||n._ty-hb2>B) { n._vis=false; continue; }
-    n._vis=true;
+    n._vis=true; _drawn++;
     wbCtx.globalAlpha = n._twk ? twk : 1;
     wbCtx.drawImage(n._spr, n._tx-hb2, n._ty-hb2, n._sprBox, n._sprBox);
   }
@@ -5260,6 +5267,7 @@ function drawSilk(){
     wbCtx.drawImage(n2._lbl, n2._tx-n2._lblW/2, n2._ty+n2._lblY-n2._lblH/2, n2._lblW, n2._lblH);
   }
   wbCtx.globalAlpha=1;
+  _pf.drawn=_drawn;
 }
 
 // ── View / LOD ──────────────────────────────────────────────────────────────
@@ -5299,9 +5307,17 @@ function pluck(n, power){
   }
 }
 
+var PERF = (location.hash.indexOf('perf')>=0);
+var _pf={phys:[],draw:[],frame:[],last:0,shown:0,drawn:0};
+function pfPush(a,v){ a.push(v); if(a.length>90) a.shift(); }
+function pfMed(a){ if(!a.length) return 0; var b=a.slice().sort(function(x,y){return x-y;}); return b[b.length>>1]; }
+
 function animTick(){
   if(!document.getElementById('p11').classList.contains('active')){ animRunning=false; return; }
   var t=performance.now();
+  if(_pf.last) pfPush(_pf.frame, t-_pf.last);
+  _pf.last=t;
+  var _t0=PERF?performance.now():0;
 
   // scheduled pluck wavefronts arrive
   if(pluckQueue.length){
@@ -5338,7 +5354,30 @@ function animTick(){
   }
   // the entire web -- silk, anchors, nodes, labels -- in one canvas pass.
   // Zero DOM writes per frame.
-  drawSilk();
+  if(PERF){
+    var _t1=performance.now(); pfPush(_pf.phys,_t1-_t0);
+    drawSilk();
+    pfPush(_pf.draw, performance.now()-_t1);
+    if(t-_pf.shown>500){
+      _pf.shown=t;
+      var el=document.getElementById('wb-perf');
+      if(el){
+        el.style.display='block';
+        var fm=pfMed(_pf.frame)||1, ec=0;
+        for(var sg=0;sg<silkGroups.length;sg++) ec+=silkGroups[sg].e.length;
+        el.textContent =
+          'fps      '+Math.round(1000/fm)+'   ('+fm.toFixed(1)+' ms/frame)\n'+
+          'physics  '+pfMed(_pf.phys).toFixed(2)+' ms\n'+
+          'draw     '+pfMed(_pf.draw).toFixed(2)+' ms\n'+
+          'canvas   '+wbCv.width+'x'+wbCv.height+'  dpr '+wbDpr+'\n'+
+          'nodes    '+_pf.drawn+'/'+nodes.length+' drawn\n'+
+          'strands  '+ec+' in '+silkGroups.length+' batches\n'+
+          'zoom     w='+Math.round(VIEW.w);
+      }
+    }
+  } else {
+    drawSilk();
+  }
   requestAnimationFrame(animTick);
 }
 
