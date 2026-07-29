@@ -4149,7 +4149,17 @@ function itemIconFor(name){
 var nodes=[], edges=[], nodeById={};
 var focusNode=null, alpha=0, running=false;
 var smFam={}, lastTouch=performance.now();
-var VIEW={w:3400}, aspect=1.4, svg=null;
+// The school never changes its mind all at once. focusOn is the intent, fMix is
+// how far the body has actually committed to it, and each star's own share of
+// that commitment arrives later the further out it sits — a wave, not a switch.
+var focusOn=false, fMix=0;
+function smRelease(){
+  focusOn=false;
+  VIEW.tw=3900;
+  var cr=document.getElementById('sm-crumb');
+  if(cr) cr.textContent='\u2726 Universe';
+}
+var VIEW={w:3900,tw:3900}, aspect=1.4, svg=null;
 var spinV=0;   // angular momentum
 
 function buildGraph(){
@@ -4232,6 +4242,16 @@ function buildGraph(){
     n.grav=Math.log(1+cnt)/Math.log(1+maxN);
   });
 
+  // ── Each domain is a bell; its clusters and items are the arms that hang
+  // from it. Devotion decides where you sit ON YOUR OWN arm — well-tended
+  // rides close under the bell, neglected trails out at the tip.
+  edges.forEach(function(ed){
+    if(ed.kind!=='struct') return;
+    ed.b._par=ed.a;
+    if(ed.a.type==='domain'){ ed.b._depth=1; ed.len=200+300*(1-(ed.b.grav||0)); ed.k=0.016; }
+    else                    { ed.b._depth=2; ed.len=105+185*(1-(ed.b.grav||0)); ed.k=0.024; }
+  });
+
   // same-name bridges (e.g. SlapDanceSing in LUNAVĀ + WELLBEING Movement)
   Object.keys(itemNodesByName).forEach(function(name){
     var arr=itemNodesByName[name];
@@ -4292,32 +4312,55 @@ function tick(){
       }
     }
   }
-  // centering
+  // ── the turn: commitment eases in, and travels outward ──────────────────
+  fMix += ((focusOn?1:0)-fMix)*0.024;
+  if(!focusOn && fMix<0.012 && focusNode){ focusNode=null; smFam={}; fMix=0; }
+  VIEW.w += ((VIEW.tw||VIEW.w)-VIEW.w)*0.040;
+
   for(var n=0;n<nodes.length;n++){
     var nd=nodes[n];
-    if(nd===focusNode){
-      nd.vx+=(0-nd.x)*0.12; nd.vy+=(0-nd.y)*0.12;
-    } else if(focusNode){
-      var dcen2=Math.hypot(nd.x,nd.y)||1;
-      if(smFam[nd.id]){
-        // family gathers around the focused star
-        nd.vx+=(0-nd.x)*0.0045*alpha; nd.vy+=(0-nd.y)*0.0045*alpha;
+    var dcen=Math.hypot(nd.x,nd.y)||1;
+    // this star's own share of the turn — later the further out it sits
+    var r=0;
+    if(focusNode){
+      r=fMix*1.55-(nd._nd||0)*0.55;
+      r = r<0?0:(r>1?1:r);
+    }
+    var inv=1-r;
+    if(inv>0.001){
+      var ga=Math.max(0.3,alpha)*inv;
+      var par=nd._par;
+      if(!par){
+        // a bell. Devotion decides how close to the middle of the dish it swims.
+        var gpull=0.0016+0.0165*(nd.grav||0);
+        nd.vx+=(0-nd.x)*gpull*ga; nd.vy+=(0-nd.y)*gpull*ga;
       } else {
-        // everyone else clears to outer space — held on a far ring
-        var f2=(1650-dcen2)*0.0035*alpha;
-        nd.vx+=nd.x/dcen2*f2; nd.vy+=nd.y/dcen2*f2;
-        // ocean current handled in integrate loop
+        // an arm. It belongs to its bell, not to the centre — only enough
+        // global pull to stop it wandering off on its own.
+        nd.vx+=(0-nd.x)*0.00035*ga; nd.vy+=(0-nd.y)*0.00035*ga;
+        // trail in the bell's wake — the arm arrives where the bell has been
+        nd.vx+=((par.x-par.vx*7)-nd.x)*0.0022*ga;
+        nd.vy+=((par.y-par.vy*7)-nd.y)*0.0022*ga;
+        // and stream outward, so arms hang clear instead of tangling inward
+        var pd=Math.hypot(par.x,par.y)||1;
+        var hang=(0.052+0.060*(1-(nd.grav||0)))*(nd._depth===2?1.25:1)*ga;
+        nd.vx+=par.x/pd*hang; nd.vy+=par.y/pd*hang;
       }
-      if(dcen2>2600){ nd.vx-=nd.x/dcen2*(dcen2-2600)*0.008; nd.vy-=nd.y/dcen2*(dcen2-2600)*0.008; }
-    } else {
-      // gravity by devotion — never fully surrenders to alpha decay, or the
-      // collision solver would jam the ordering wherever it happened to land
-      var gpull=0.0012+0.0150*(nd.grav||0);
-      var ga=Math.max(0.3,alpha);
-      nd.vx+=(0-nd.x)*gpull*ga; nd.vy+=(0-nd.y)*gpull*ga;
-      var dcen=Math.hypot(nd.x,nd.y);
-      if(dcen>2300){ nd.vx-=nd.x/dcen*(dcen-2300)*0.008; nd.vy-=nd.y/dcen*(dcen-2300)*0.008; }
-      // ocean current handled in integrate loop
+      if(dcen>2300){ nd.vx-=nd.x/dcen*(dcen-2300)*0.008*inv; nd.vy-=nd.y/dcen*(dcen-2300)*0.008*inv; }
+    }
+    if(r>0.001){
+      if(nd===focusNode){
+        // swims to the centre and settles — no snap, no overshoot
+        nd.vx+=((0-nd.x)*0.018-nd.vx*0.075)*r;
+        nd.vy+=((0-nd.y)*0.018-nd.vy*0.075)*r;
+      } else if(smFam[nd.id]){
+        nd.vx+=(0-nd.x)*0.0045*alpha*r; nd.vy+=(0-nd.y)*0.0045*alpha*r;
+      } else {
+        // everyone else eases out to a far ring, damped so they glide onto it
+        var f2=((1650-dcen)*0.0030-((nd.vx*nd.x+nd.vy*nd.y)/dcen)*0.055)*alpha*r;
+        nd.vx+=nd.x/dcen*f2; nd.vy+=nd.y/dcen*f2;
+      }
+      if(dcen>2600){ nd.vx-=nd.x/dcen*(dcen-2600)*0.008*r; nd.vy-=nd.y/dcen*(dcen-2600)*0.008*r; }
     }
   }
   // integrate — the water is a field, not a per-star wiggle. Drift depends on
@@ -4537,7 +4580,7 @@ function drawEdges(){
   for(var g=0;g<smEdgeGroups.length;g++){
     var G=smEdgeGroups[g], E=G.e, st=G.kind==='struct';
     smCtx.strokeStyle=G.color;
-    smCtx.globalAlpha= st ? 0.25 : (focusNode?0.05:0.14);
+    smCtx.globalAlpha= st ? 0.25 : (0.14-0.09*fMix);
     smCtx.lineWidth= st ? 2.5 : 1.6;
     smCtx.setLineDash(st?NODASH2:[5,7]);
     smCtx.beginPath();
@@ -4554,7 +4597,7 @@ function drawEdges(){
     smCtx.setLineDash(NODASH2);
     for(var h=0;h<hot.length;h++){
       var e2=hot[h], s2=e2.kind==='struct';
-      smCtx.globalAlpha= s2?0.9:0.85;
+      smCtx.globalAlpha= (s2?0.9:0.85)*fMix;
       smCtx.lineWidth= s2?4:1.6;
       smCtx.beginPath();
       smCtx.moveTo(e2.a.x,e2.a.y); smCtx.lineTo(e2.b.x,e2.b.y);
@@ -4585,7 +4628,7 @@ function render(){
     var sc=isFocus?1.5:1, half=n._sprBox*sc/2;
     if(n.x+half<L||n.x-half>R2||n.y+half<T||n.y-half>B){ n._vis=false; continue; }
     n._vis=true; n._sc=sc; n._nb=isNb; n._fc=isFocus;
-    var op = focusNode ? (isFocus||isNb?1:0.3) : 1;
+    var op = focusNode ? (isFocus||isNb?1:(1-0.7*fMix)) : 1;
     smCtx.globalAlpha = op * (n._twk?twk:1);
     smCtx.drawImage(n._spr, n.x-half, n.y-half, n._sprBox*sc, n._sprBox*sc);
   }
@@ -4596,7 +4639,7 @@ function render(){
     if(n3.type==='domain') showLbl=1;
     else if(n3.type==='cluster') showLbl = W<4200 ? 1 : 0.5;
     else showLbl = (n3._fc||n3._nb) ? 1 : (W<1300 ? 0.9 : 0);
-    var lop = focusNode ? ((n3._fc||n3._nb) ? 1 : showLbl*0.2) : showLbl;
+    var lop = focusNode ? ((n3._fc||n3._nb) ? 1 : showLbl*(1-0.8*fMix)) : showLbl;
     if(lop<=0.02) continue;
     smCtx.globalAlpha=lop;
     var ly = n3.y + n3.r*n3._sc + n3._lblGap;
@@ -4609,10 +4652,7 @@ function render(){
 function loop(){
   if(!document.getElementById('p10').classList.contains('active')){ running=false; return; }
   // 30s of stillness: the web settles back to its resting shape
-  if(focusNode && performance.now()-lastTouch>30000){
-    focusNode=null; smFam={}; alpha=0.9; VIEW.w=3900; hideTip();
-    var cr=document.getElementById('sm-crumb'); if(cr) cr.textContent='✦ Universe';
-  }
+  if(focusOn && performance.now()-lastTouch>30000){ alpha=0.9; smRelease(); hideTip(); }
   tick(); render();
   requestAnimationFrame(loop);
 }
@@ -4721,7 +4761,7 @@ function wire(){
       var oldD=Math.hypot(pointers[ev.pointerId].x-other.x,pointers[ev.pointerId].y-other.y);
       pointers[ev.pointerId]={x:ev.clientX,y:ev.clientY};
       var newD=Math.hypot(ev.clientX-other.x,ev.clientY-other.y);
-      if(oldD>0&&newD>0){ VIEW.w=Math.max(500,Math.min(6500,VIEW.w*oldD/newD)); }
+      if(oldD>0&&newD>0){ VIEW.w=Math.max(500,Math.min(6500,VIEW.w*oldD/newD)); VIEW.tw=VIEW.w; }
       smCancelHold();
       if(gesture&&gesture.node){gesture.node._drag=false;}
       gesture=null;
@@ -4771,12 +4811,12 @@ function wire(){
     ev.preventDefault();
     lastTouch=performance.now();
     VIEW.w=Math.max(500,Math.min(6500,VIEW.w*(ev.deltaY>0?1.1:0.9)));
+    VIEW.tw=VIEW.w;
   },{passive:false});
 
   var crumb=document.getElementById('sm-crumb');
   if(crumb) crumb.addEventListener('click',function(){
-    focusNode=null; smFam={}; alpha=1; VIEW.w=3900; hideTip();
-    crumb.textContent='✦ Universe';
+    alpha=1; smRelease(); hideTip();
   });
 }
 
@@ -4806,14 +4846,16 @@ function setFocus(n){
       });
     }
   }
-  // pluck: impulse rings out through connected silk
-  edges.forEach(function(ed){
-    var other = ed.a===n ? ed.b : (ed.b===n ? ed.a : null);
-    if(!other) return;
-    var dx=other.x-n.x, dy=other.y-n.y, d=Math.hypot(dx,dy)||1;
-    other.vx+=dx/d*5; other.vy+=dy/d*5;
-  });
-  VIEW.w = n.type==='domain' ? 2400 : (n.type==='cluster' ? 1400 : 900);
+  // how far out each star sits — sets how late its turn comes
+  focusOn=true;
+  var maxd=1;
+  for(var wi=0;wi<nodes.length;wi++){
+    var m2=nodes[wi];
+    m2._d0=Math.hypot(m2.x-n.x,m2.y-n.y);
+    if(m2._d0>maxd) maxd=m2._d0;
+  }
+  for(var wj=0;wj<nodes.length;wj++) nodes[wj]._nd=nodes[wj]._d0/maxd;
+  VIEW.tw = n.type==='domain' ? 2400 : (n.type==='cluster' ? 1400 : 900);
   var crumb=document.getElementById('sm-crumb');
   if(crumb) crumb.textContent='✦ '+n.label;
   // tooltip
@@ -4848,7 +4890,7 @@ window.openStarMap = function(){
     smResize();
     buildGraph();
     buildDOM();
-    focusNode=null; VIEW.w=3900; alpha=1; spinV=0;
+    focusNode=null; focusOn=false; fMix=0; VIEW.w=3900; VIEW.tw=3900; alpha=1; spinV=0;
     render();   // first frame synchronously — don't wait on rAF
     if(!_wired){
       wire();
