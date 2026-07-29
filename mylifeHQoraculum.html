@@ -4152,7 +4152,7 @@ var smFam={}, lastTouch=performance.now();
 // The school never changes its mind all at once. focusOn is the intent, fMix is
 // how far the body has actually committed to it, and each star's own share of
 // that commitment arrives later the further out it sits — a wave, not a switch.
-var focusOn=false, fMix=0;
+var focusOn=false, fMix=0, jellies=[];
 function smRelease(){
   focusOn=false;
   VIEW.tw=3900;
@@ -4242,14 +4242,38 @@ function buildGraph(){
     n.grav=Math.log(1+cnt)/Math.log(1+maxN);
   });
 
-  // ── Each domain is a bell; its clusters and items are the arms that hang
-  // from it. Devotion decides where you sit ON YOUR OWN arm — well-tended
-  // rides close under the bell, neglected trails out at the tip.
+  // ── Anatomy. The domain is the centre of the dome. Its sub-domains ARE the
+  // dome — they sit on its circumference. The items hang at the ends of the
+  // tendrils trailing from each rim point. Four animals, not one crowd.
   edges.forEach(function(ed){
     if(ed.kind!=='struct') return;
     ed.b._par=ed.a;
-    if(ed.a.type==='domain'){ ed.b._depth=1; ed.len=200+300*(1-(ed.b.grav||0)); ed.k=0.016; }
-    else                    { ed.b._depth=2; ed.len=105+185*(1-(ed.b.grav||0)); ed.k=0.024; }
+    ed.b._depth = ed.a.type==='domain' ? 1 : 2;
+    ed.k=0.006;                       // the constraints below do the shaping
+  });
+
+  jellies=[];
+  nodes.forEach(function(n){
+    if(n.type!=='domain') return;
+    var rim=[], arms=[];
+    nodes.forEach(function(m){ if(m._depth===1&&m._par===n) rim.push(m); });
+    rim.forEach(function(c){ nodes.forEach(function(m){ if(m._par===c) arms.push(m); }); });
+    // the dome must be wide enough to seat its own rim without crowding
+    var R0=Math.max(rim.length*17.5, 165+205*(n.grav||0));
+    rim.forEach(function(c,ci){ c._slot=(ci/rim.length)*Math.PI*2; });
+    arms.forEach(function(a){ a._reach=78+195*(1-(a.grav||0)); });
+    var J={ head:n, rim:rim, arms:arms, all:[n].concat(rim,arms), R0:R0,
+            // a bigger bell is a slower animal: longer stroke, heavier water,
+            // less thrust per unit mass, more reluctance to turn
+            period: 3200+R0*9.5,
+            thrust: 26/Math.pow(R0/230,0.55),
+            damp:   0.938+0.010*Math.min(1,R0/460),
+            turn:   0.020/Math.pow(R0/230,0.6),
+            t0: Math.random()*8000, c:0, pc:0 };
+    var a0=Math.atan2(n.y,n.x);
+    J.hx=Math.cos(a0); J.hy=Math.sin(a0);
+    n._jelly=J; rim.forEach(function(c){c._jelly=J;}); arms.forEach(function(a){a._jelly=J;});
+    jellies.push(J);
   });
 
   // same-name bridges (e.g. SlapDanceSing in LUNAVĀ + WELLBEING Movement)
@@ -4269,8 +4293,47 @@ function buildGraph(){
 }
 
 // ── Physics ─────────────────────────────────────────────────────────────────
+// A jellyfish does not swim continuously. The bell contracts fast, throws a
+// slug of water out behind it, and the animal surges; then the bell opens
+// slowly and it coasts. All the motion lives in that asymmetry.
+function pulseJellies(_t){
+  for(var ji=0;ji<jellies.length;ji++){
+    var J=jellies[ji];
+    var ph=((_t-J.t0)%J.period)/J.period;
+    // 18% of the cycle is the power stroke, 82% is the slow reopening
+    J.c = ph<0.18 ? Math.sin(ph/0.18*Math.PI*0.5)
+                  : Math.pow(1-(ph-0.18)/0.82, 1.7);
+    var dc=J.c-J.pc; J.pc=J.c;
+    if(dc>0){
+      // thrust only while the bell is actually closing
+      var th=dc*J.thrust;
+      for(var mi=0;mi<J.all.length;mi++){
+        var m=J.all[mi];
+        m.vx+=J.hx*th; m.vy+=J.hy*th;
+      }
+    }
+    // heading: a slow private wander, the bloom's shared drift, and a turn
+    // away from the edge of the dish before it gets there
+    var wob=Math.sin(_t*0.00013+ji*2.2)*0.6+Math.sin(_t*0.00007+ji*1.1)*0.4;
+    var ax=-J.hy*wob, ay=J.hx*wob;
+    var bx=0,by=0,bn=0;
+    for(var jk=0;jk<jellies.length;jk++){
+      if(jk===ji) continue;
+      var K=jellies[jk];
+      var ddx=K.head.x-J.head.x, ddy=K.head.y-J.head.y;
+      if(ddx*ddx+ddy*ddy<1600000){ bx+=K.hx; by+=K.hy; bn++; }
+    }
+    if(bn){ ax+=(bx/bn-J.hx)*1.5; ay+=(by/bn-J.hy)*1.5; }
+    var hd=Math.hypot(J.head.x,J.head.y)||1;
+    if(hd>1500){ ax-=J.head.x/hd*(hd-1500)*0.004; ay-=J.head.y/hd*(hd-1500)*0.004; }
+    J.hx+=ax*J.turn; J.hy+=ay*J.turn;
+    var hl=Math.hypot(J.hx,J.hy)||1; J.hx/=hl; J.hy/=hl;
+  }
+}
+
 function tick(){
   var _t=performance.now();
+  pulseJellies(_t);
   // tethers, not strings. A spring with no damping oscillates — that IS a
   // pluck. These are slack near their rest length and bleed off any relative
   // motion along their own axis, so nothing ever rings.
@@ -4305,8 +4368,9 @@ function tick(){
       var fx2=dx2/d3*f2, fy2=dy2/d3*f2;
       a.vx-=fx2; a.vy-=fy2;
       b.vx+=fx2; b.vy+=fy2;
-      // school of fish: take some of your heading from those close by
-      if(d2<200000){
+      // agreement travels within a body, not between them — otherwise the
+      // four animals blur into one crowd again
+      if(d2<200000 && a._jelly===b._jelly){
         a._ax+=b.vx; a._ay+=b.vy; a._an++;
         b._ax+=a.vx; b._ay+=a.vy; b._an++;
       }
@@ -4332,19 +4396,32 @@ function tick(){
       var par=nd._par;
       if(!par){
         // a bell. Devotion decides how close to the middle of the dish it swims.
-        var gpull=0.0016+0.0165*(nd.grav||0);
+        var gpull=0.0008+0.0072*(nd.grav||0);
         nd.vx+=(0-nd.x)*gpull*ga; nd.vy+=(0-nd.y)*gpull*ga;
       } else {
-        // an arm. It belongs to its bell, not to the centre — only enough
-        // global pull to stop it wandering off on its own.
-        nd.vx+=(0-nd.x)*0.00035*ga; nd.vy+=(0-nd.y)*0.00035*ga;
-        // trail in the bell's wake — the arm arrives where the bell has been
-        nd.vx+=((par.x-par.vx*7)-nd.x)*0.0022*ga;
-        nd.vy+=((par.y-par.vy*7)-nd.y)*0.0022*ga;
-        // and stream outward, so arms hang clear instead of tangling inward
-        var pd=Math.hypot(par.x,par.y)||1;
-        var hang=(0.052+0.060*(1-(nd.grav||0)))*(nd._depth===2?1.25:1)*ga;
-        nd.vx+=par.x/pd*hang; nd.vy+=par.y/pd*hang;
+        var J=nd._jelly;
+        if(nd._depth===1){
+          // rim: seated on the circumference of its own dome, and riding the
+          // contraction inward and outward with every stroke
+          var hAng=Math.atan2(J.hy,J.hx);
+          var sa=hAng+nd._slot;
+          var rad=J.R0*(1-0.34*J.c);
+          var tx=J.head.x+Math.cos(sa)*rad, ty=J.head.y+Math.sin(sa)*rad;
+          nd.vx+=((tx-nd.x)*0.030-nd.vx*0.10)*ga;
+          nd.vy+=((ty-nd.y)*0.030-nd.vy*0.10)*ga;
+        } else {
+          // tendril: streams from its rim point, away from the head and back
+          // along the animal's wake. Devotion decides how far down it hangs.
+          var ox=par.x-J.head.x, oy=par.y-J.head.y;
+          var ol=Math.hypot(ox,oy)||1;
+          var dx3=ox/ol*0.45-J.hx*0.85, dy3=oy/ol*0.45-J.hy*0.85;
+          var dl=Math.hypot(dx3,dy3)||1;
+          var reach=nd._reach*(1+0.16*J.c);
+          var tx2=(par.x-par.vx*5)+dx3/dl*reach;
+          var ty2=(par.y-par.vy*5)+dy3/dl*reach;
+          nd.vx+=((tx2-nd.x)*0.014-nd.vx*0.055)*ga;
+          nd.vy+=((ty2-nd.y)*0.014-nd.vy*0.055)*ga;
+        }
       }
       if(dcen>2300){ nd.vx-=nd.x/dcen*(dcen-2300)*0.008*inv; nd.vy-=nd.y/dcen*(dcen-2300)*0.008*inv; }
     }
@@ -4376,7 +4453,7 @@ function tick(){
       q.vx+=(q._ax/q._an-q.vx)*0.048;
       q.vy+=(q._ay/q._an-q.vy)*0.048;
     }
-    var cur=0.052+(1-(q.grav||0))*0.088;
+    var cur=(0.052+(1-(q.grav||0))*0.088)*(q._depth===1?0.30:(q._depth===2?1:0.55));
     // curl of a slow-turning field — sin of y drives x, cos of x drives y
     q.vx+=(Math.sin(q.y*0.00112+ph)+0.55*Math.sin(q.y*0.00263-ph*1.7))*cur;
     q.vy+=(Math.cos(q.x*0.00094-ph*1.2)+0.55*Math.cos(q.x*0.00218+ph*0.8))*cur;
@@ -4384,7 +4461,8 @@ function tick(){
     var dcb=Math.sqrt(q.x*q.x+q.y*q.y)||1;
     var br=breath*(0.45+0.55*(1-(q.grav||0)));
     q.vx+=q.x/dcb*br; q.vy+=q.y/dcb*br;
-    q.vx*=0.935; q.vy*=0.935;
+    var dmp=(q._jelly&&!focusNode)?q._jelly.damp:0.935;
+    q.vx*=dmp; q.vy*=dmp;
     q.x+=q.vx; q.y+=q.vy;
   }
   // ── hard bodies: stars meet and part, they never sit on top of each other.
@@ -4436,7 +4514,7 @@ function tick(){
     rotateAll(spinV);
     spinV*=0.985;
   }
-  rotateAll(0.00019);   // the whole body turns under the current, always
+  rotateAll(0.00009);   // the whole bloom turns under the current, always
   alpha=Math.max(0.035, alpha*0.996);
 }
 
