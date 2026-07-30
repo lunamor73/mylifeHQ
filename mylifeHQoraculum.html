@@ -4153,6 +4153,14 @@ var smFam={}, lastTouch=performance.now();
 // how far the body has actually committed to it, and each star's own share of
 // that commitment arrives later the further out it sits — a wave, not a switch.
 var focusOn=false, fMix=0, jellies=[];
+// Everything about how fast a tap resolves, on one dial. Append #entry=0.5 to
+// the URL to halve it again, #entry=2 to double it. Default is already half of
+// what it was. Find the number that feels right and it becomes the default.
+var ENTRY=(function(){
+  var m=/entry=([0-9.]+)/.exec(location.hash+location.search);
+  var v=m?parseFloat(m[1]):1;
+  return (isFinite(v)&&v>0)?v:1;
+})();
 function smRelease(){
   focusOn=false;
   VIEW.tw=3900;
@@ -4396,9 +4404,9 @@ function tick(){
     }
   }
   // ── the turn: commitment eases in, and travels outward ──────────────────
-  fMix += ((focusOn?1:0)-fMix)*0.0013;
+  fMix += ((focusOn?1:0)-fMix)*0.0009*ENTRY;
   if(!focusOn && fMix<0.0025 && focusNode){ focusNode=null; smFam={}; fMix=0; }
-  VIEW.w += ((VIEW.tw||VIEW.w)-VIEW.w)*0.0028;
+  VIEW.w += ((VIEW.tw||VIEW.w)-VIEW.w)*0.0013*ENTRY;
 
   for(var n=0;n<nodes.length;n++){
     var nd=nodes[n];
@@ -4459,14 +4467,14 @@ function tick(){
         var J3=nd._jelly;
         var dcl=dcen;
         var ease=Math.min(1,dcl/420);              // settle, don't slam in
-        var surge=0.10+0.30*(J3?Math.max(0,J3.c-J3.pcPrev||0)*9:0.12);
+        var surge=(0.042+0.13*(J3?Math.max(0,J3.c-J3.pcPrev||0)*9:0.12))*ENTRY;
         nd.vx+=((-nd.x/dcl)*surge*ease-nd.vx*0.030)*r;
         nd.vy+=((-nd.y/dcl)*surge*ease-nd.vy*0.030)*r;
       } else if(smFam[nd.id]){
-        nd.vx+=(0-nd.x)*0.0013*alpha*r; nd.vy+=(0-nd.y)*0.0013*alpha*r;
+        nd.vx+=(0-nd.x)*0.0006*alpha*r*ENTRY; nd.vy+=(0-nd.y)*0.0006*alpha*r*ENTRY;
       } else {
         // everyone else eases out to a far ring, damped so they glide onto it
-        var f2=((1650-dcen)*0.0008-((nd.vx*nd.x+nd.vy*nd.y)/dcen)*0.048)*alpha*r;
+        var f2=((1650-dcen)*0.0004*ENTRY-((nd.vx*nd.x+nd.vy*nd.y)/dcen)*0.048)*alpha*r;
         nd.vx+=nd.x/dcen*f2; nd.vy+=nd.y/dcen*f2;
       }
       if(dcen>2600){ nd.vx-=nd.x/dcen*(dcen-2600)*0.008*r; nd.vy-=nd.y/dcen*(dcen-2600)*0.008*r; }
@@ -4494,7 +4502,8 @@ function tick(){
     // the field is reorganising, so distance costs time the way it should
     if(focusNode){
       var sp=q.vx*q.vx+q.vy*q.vy;
-      if(sp>10.24){ var sf=3.2/Math.sqrt(sp); q.vx*=sf; q.vy*=sf; }
+      var cap=1.35*ENTRY;
+      if(sp>cap*cap){ var sf=cap/Math.sqrt(sp); q.vx*=sf; q.vy*=sf; }
     }
     q.x+=q.vx; q.y+=q.vy;
   }
