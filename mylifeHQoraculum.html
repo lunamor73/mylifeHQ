@@ -4396,9 +4396,9 @@ function tick(){
     }
   }
   // ── the turn: commitment eases in, and travels outward ──────────────────
-  fMix += ((focusOn?1:0)-fMix)*0.0026;
-  if(!focusOn && fMix<0.004 && focusNode){ focusNode=null; smFam={}; fMix=0; }
-  VIEW.w += ((VIEW.tw||VIEW.w)-VIEW.w)*0.0055;
+  fMix += ((focusOn?1:0)-fMix)*0.0013;
+  if(!focusOn && fMix<0.0025 && focusNode){ focusNode=null; smFam={}; fMix=0; }
+  VIEW.w += ((VIEW.tw||VIEW.w)-VIEW.w)*0.0028;
 
   for(var n=0;n<nodes.length;n++){
     var nd=nodes[n];
@@ -4535,7 +4535,7 @@ function tick(){
     spinV*=0.985;
   }
   rotateAll(0.000045);  // the whole bloom turns under the current, always
-  alpha=Math.max(0.035, alpha*0.9993);
+  alpha=Math.max(0.06, alpha*0.99965);
 }
 
 function rotateAll(angle){
@@ -4750,7 +4750,7 @@ function render(){
 function loop(){
   if(!document.getElementById('p10').classList.contains('active')){ running=false; return; }
   // 30s of stillness: the web settles back to its resting shape
-  if(focusOn && performance.now()-lastTouch>45000){ alpha=0.9; smRelease(); hideTip(); }
+  if(focusOn && performance.now()-lastTouch>75000){ alpha=0.9; smRelease(); hideTip(); }
   tick(); render();
   requestAnimationFrame(loop);
 }
