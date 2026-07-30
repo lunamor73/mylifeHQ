@@ -4285,6 +4285,11 @@ function buildGraph(){
     n._jelly=J; rim.forEach(function(c){c._jelly=J;}); arms.forEach(function(a){a._jelly=J;});
     jellies.push(J);
   });
+  // The busiest domain anchors the field. It is the only one with any pull
+  // toward the middle; everything else arranges itself around it.
+  var anch=null;
+  jellies.forEach(function(J){ if(!anch||(J.head.grav||0)>(anch.head.grav||0)) anch=J; });
+  jellies.forEach(function(J){ J.anchor=(J===anch); });
 
   // same-name bridges (e.g. SlapDanceSing in LUNAVĀ + WELLBEING Movement)
   Object.keys(itemNodesByName).forEach(function(name){
@@ -4340,23 +4345,45 @@ function pulseJellies(_t){
     // away from the edge of the dish before it gets there
     var wob=Math.sin(_t*0.000065+ji*2.2)*0.6+Math.sin(_t*0.000035+ji*1.1)*0.4;
     var ax=-J.hy*wob, ay=J.hx*wob;
-    // turn away from whoever is nearest — jellyfish keep company, not formation
+    // ── Territory. No centre to compete for. Each animal keeps its own water,
+    // and the only ones that come close enough to tangle are those tended at a
+    // similar rate — like priority finds like, everything else holds off.
     for(var jk=0;jk<jellies.length;jk++){
       if(jk===ji) continue;
       var K=jellies[jk];
       var ddx=J.head.x-K.head.x, ddy=J.head.y-K.head.y;
-      var dd2=ddx*ddx+ddy*ddy;
-      if(dd2<1440000&&dd2>1){
-        var ddl=Math.sqrt(dd2);
-        var push=(1-ddl/1200)*2.2*smDisp;
-        ax+=ddx/ddl*push; ay+=ddy/ddl*push;
-        var sep=(1-ddl/1200)*0.16*smDisp;
-        for(var sm2=0;sm2<J.all.length;sm2++){ J.all[sm2].vx+=ddx/ddl*sep; J.all[sm2].vy+=ddy/ddl*sep; }
+      var dd2=ddx*ddx+ddy*ddy; if(dd2<1) continue;
+      var ddl=Math.sqrt(dd2);
+      var kin=1-Math.min(1,Math.abs((J.head.grav||0)-(K.head.grav||0))*1.9);
+      var span=J.R0+K.R0;
+      var want=span*(2.05-1.40*kin*kin)*(1+0.55*smDisp);
+      if(ddl<want){
+        var push=(1-ddl/want)*0.30;
+        for(var s1=0;s1<J.all.length;s1++){ J.all[s1].vx+=ddx/ddl*push; J.all[s1].vy+=ddy/ddl*push; }
+        ax+=ddx/ddl*1.1; ay+=ddy/ddl*1.1;
+      } else if(kin>0.55 && ddl>want*1.7 && smDisp<0.5){
+        var draw=Math.min(1,ddl/want-1.7)*0.052*kin*(1-smDisp*2);
+        for(var s2=0;s2<J.all.length;s2++){ J.all[s2].vx-=ddx/ddl*draw; J.all[s2].vy-=ddy/ddl*draw; }
+      }
+    }
+    if(J.anchor){
+      // a little gravity, and only here
+      for(var s0=0;s0<J.all.length;s0++){
+        J.all[s0].vx-=J.head.x*0.00060; J.all[s0].vy-=J.head.y*0.00060;
       }
     }
     var hd=Math.hypot(J.head.x,J.head.y)||1;
-    var lim=1150+700*smDisp;
-    if(hd>lim){ ax-=J.head.x/hd*(hd-lim)*0.004; ay-=J.head.y/hd*(hd-lim)*0.004; }
+    var lim=1600+420*smDisp;
+    if(hd>lim){
+      var back=(hd-lim)*0.0016;
+      for(var s3=0;s3<J.all.length;s3++){ J.all[s3].vx-=J.head.x/hd*back; J.all[s3].vy-=J.head.y/hd*back; }
+      ax-=J.head.x/hd*1.4; ay-=J.head.y/hd*1.4;
+    }
+    // ── The current: one slow gyre through the whole body of water, applied
+    // bodily so each animal drifts in it rather than being stirred apart.
+    var gx=(-J.head.y*0.000013)+Math.sin(_t*0.000037+J.head.y*0.00075)*0.040;
+    var gy=( J.head.x*0.000013)+Math.cos(_t*0.000029+J.head.x*0.00068)*0.040;
+    for(var s4=0;s4<J.all.length;s4++){ J.all[s4].vx+=gx; J.all[s4].vy+=gy; }
     J.hx+=ax*J.turn; J.hy+=ay*J.turn;
     var hl=Math.hypot(J.hx,J.hy)||1; J.hx/=hl; J.hy/=hl;
   }
@@ -4546,6 +4573,15 @@ function tick(){
         }
       }
     }
+  }
+
+  // Keep the composition centred by translating the WHOLE field. A uniform
+  // shift changes nothing about how the animals sit relative to each other.
+  if(!focusNode && jellies.length){
+    var mx=0,my=0;
+    for(var hi=0;hi<jellies.length;hi++){ mx+=jellies[hi].head.x; my+=jellies[hi].head.y; }
+    mx=mx/jellies.length*0.0020; my=my/jellies.length*0.0020;
+    for(var ni=0;ni<nodes.length;ni++){ nodes[ni].x-=mx; nodes[ni].y-=my; }
   }
 
   // spin momentum
