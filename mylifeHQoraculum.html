@@ -4299,7 +4299,10 @@ function buildGraph(){
     // the dome must be wide enough to seat its own rim without crowding
     var Rmin=rim.length*17.5;
     rim.forEach(function(c,ci){ c._slot=(ci/rim.length)*Math.PI*2; });
-    var J={ head:n, rim:rim, arms:arms, all:[n].concat(rim,arms), Rmin:Rmin, R0:Math.max(Rmin,165+205*(n.grav||0)),
+    // The animal's CHARACTER comes from its real size, not the blended one —
+    // encouragement changes how big it swims, not what kind of creature it is.
+    var R0=Math.max(Rmin, 165+205*(n.gravNow||n.grav||0));
+    var J={ head:n, rim:rim, arms:arms, all:[n].concat(rim,arms), Rmin:Rmin, R0:R0,
             // a bigger bell is a slower animal: longer stroke, heavier water,
             // less thrust per unit mass, more reluctance to turn
             period: 6400+R0*19,
