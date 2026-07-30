@@ -2533,6 +2533,12 @@ function mundusCopy() {
 .sm-dot{width:7px;height:7px;border-radius:50%;display:inline-block}
 @keyframes smTwinkle{0%,100%{opacity:1}50%{opacity:0.55}}
 .sm-star-lit{animation:smTwinkle 3.2s ease-in-out infinite}
+#sm-encourage{position:absolute;left:14px;bottom:14px;z-index:7;max-width:min(420px,72vw);
+  font-family:Georgia,'Times New Roman',serif;font-size:12.5px;line-height:1.6;color:var(--muted);
+  pointer-events:none;transition:opacity 1.4s ease}
+#sm-encourage b{font-style:italic;font-weight:400;color:var(--gold)}
+#sm-encourage .enc-ph{display:block;font-family:-apple-system,sans-serif;font-size:9.5px;
+  letter-spacing:0.16em;text-transform:uppercase;color:#b9b0a0;margin-bottom:5px}
 </style>
 <div id="p10" class="page">
   <div class="top-bar">
@@ -2551,6 +2557,7 @@ function mundusCopy() {
     </div>
     <canvas id="sm-canvas"></canvas>
     <div class="sm-tooltip" id="sm-tooltip"></div>
+    <div id="sm-encourage"></div>
   </div>
 </div>
 
@@ -4177,6 +4184,7 @@ function buildGraph(){
   var subR={},subP={},itR={},itP={};
   var cooc={};
   var itAll={}, subAll={}, domAll={};
+  var itRec={}, subRec={}, domRec={};
   entries.forEach(function(e){
     var age=now-new Date(e.ts).getTime();
     var dA=(e.domain||'').toLowerCase(), ldA=(e.lunadom||'').toLowerCase();
@@ -4187,6 +4195,9 @@ function buildGraph(){
     if(age<=30*D){
       var d=(e.domain||'').toLowerCase(), ld=(e.lunadom||'').toLowerCase();
       var k=(d==='lunamor'&&ld)?ld:d;
+      domRec[d]=(domRec[d]||0)+1;
+      subRec[k]=(subRec[k]||0)+1;
+      (e.items||[]).forEach(function(it){ itRec[it]=(itRec[it]||0)+1; });
       var rec=age<=7*D;
       (rec?subR:subP)[k]=((rec?subR:subP)[k]||0)+1;
       (e.items||[]).forEach(function(it){ (rec?itR:itP)[it]=((rec?itR:itP)[it]||0)+1; });
@@ -4247,7 +4258,26 @@ function buildGraph(){
       });
     }
     n.n=cnt;
-    n.grav=Math.log(1+cnt)/Math.log(1+maxN);
+    n.gravNow=Math.log(1+cnt)/Math.log(1+maxN);
+    n.grav=n.gravNow;
+    n.nRec = n.type==='domain' ? (domRec[n.key]||0)
+           : n.type==='cluster' ? (subRec[n.key]||0)
+           : (itRec[n.name]||0);
+  });
+  // What this would look like if it were balanced. Two readings, both real:
+  // SHORT — what has gone quieter lately than its own history suggests.
+  // LONG  — what has less room than its peers, over all time.
+  ['domain','cluster','item'].forEach(function(ty){
+    var set=nodes.filter(function(n){return n.type===ty;});
+    if(!set.length) return;
+    var mean=0; set.forEach(function(n){mean+=n.gravNow;}); mean/=set.length;
+    var maxR=1; set.forEach(function(n){ if(n.nRec>maxR) maxR=n.nRec; });
+    set.forEach(function(n){
+      var recent=Math.log(1+n.nRec)/Math.log(1+maxR);
+      n.shortNeed=Math.max(0, n.gravNow-recent);
+      n.longNeed =Math.max(0, mean-n.gravNow);
+      n.gravEnc=Math.max(0,Math.min(1, n.gravNow + n.shortNeed*0.85 + n.longNeed*1.15));
+    });
   });
 
   // ── Anatomy. The domain is the centre of the dome. Its sub-domains ARE the
@@ -4267,12 +4297,9 @@ function buildGraph(){
     nodes.forEach(function(m){ if(m._depth===1&&m._par===n) rim.push(m); });
     rim.forEach(function(c){ nodes.forEach(function(m){ if(m._par===c) arms.push(m); }); });
     // the dome must be wide enough to seat its own rim without crowding
-    var R0=Math.max(rim.length*17.5, 165+205*(n.grav||0));
+    var Rmin=rim.length*17.5;
     rim.forEach(function(c,ci){ c._slot=(ci/rim.length)*Math.PI*2; });
-    // tentacles are measured against their OWN bell, so every animal keeps
-    // jellyfish proportions no matter its size
-    arms.forEach(function(a){ a._reach=R0*(0.52+0.88*(1-(a.grav||0))); });
-    var J={ head:n, rim:rim, arms:arms, all:[n].concat(rim,arms), R0:R0,
+    var J={ head:n, rim:rim, arms:arms, all:[n].concat(rim,arms), Rmin:Rmin, R0:Math.max(Rmin,165+205*(n.grav||0)),
             // a bigger bell is a slower animal: longer stroke, heavier water,
             // less thrust per unit mass, more reluctance to turn
             period: 6400+R0*19,
@@ -4315,17 +4342,66 @@ function buildGraph(){
 // and become themselves — bell, dome, trailing tentacles. Drawn back into the
 // gravity of the centre they lose those proportions and fuse into something
 // else: one slow spidering thing. It breathes between the two, forever.
-var CYCLE=504000, smT0=performance.now(), smDisp=0;
+var CYCLE=504000, smT0=performance.now(), smDisp=0, smEnc=0, smPhase='';
 function bloomCycle(_t){
-  var cp=((_t-smT0)%CYCLE)/CYCLE, want;
-  if(cp<0.40)      want=0;                      // gathered — the composite
-  else if(cp<0.53) want=(cp-0.40)/0.13;         // repel apart
-  else if(cp<0.87) want=1;                      // four separate animals
-  else             want=1-(cp-0.87)/0.13;       // drawn back in
-  smDisp+=(want-smDisp)*0.0038;                 // never a corner, always a swell
+  var cp=((_t-smT0)%CYCLE)/CYCLE, wd, we, ph;
+  if(cp<0.26)      { wd=0; we=0; ph='as it is'; }
+  else if(cp<0.36) { wd=(cp-0.26)/0.10; we=0; ph='opening out'; }
+  else if(cp<0.50) { wd=1; we=0; ph='as it is'; }
+  else if(cp<0.60) { wd=1; we=(cp-0.50)/0.10; ph='finding the balance'; }
+  else if(cp<0.80) { wd=1; we=1; ph='what would balance it'; }
+  else if(cp<0.90) { wd=1; we=1-(cp-0.80)/0.10; ph='returning'; }
+  else             { wd=1-(cp-0.90)/0.10; we=0; ph='drawing together'; }
+  smDisp+=(wd-smDisp)*0.0038;
+  smEnc +=(we-smEnc )*0.0034;
+  if(ph!==smPhase){ smPhase=ph; smCaption(); }
+}
+
+// Name what the shape is saying. Short term is what has gone quiet against its
+// own recent history; long term is what has had less room across all time.
+function smTopNeed(field, ty, n){
+  return nodes.filter(function(x){return x.type===ty && x[field]>0.02;})
+              .sort(function(a,b){return b[field]-a[field];})
+              .slice(0,n).map(function(x){return x.label;});
+}
+function smCaption(){
+  var el=document.getElementById('sm-encourage'); if(!el) return;
+  var shortD=smTopNeed('shortNeed','cluster',2);
+  var longD =smTopNeed('longNeed','domain',2);
+  var body;
+  if(smPhase==='what would balance it'||smPhase==='finding the balance'){
+    var a=shortD.length?'<b>'+shortD.join('</b> and <b>')+'</b>':null;
+    var b=longD.length ?'<b>'+longD.join('</b> and <b>')+'</b>':null;
+    body=(a?'Near term, '+a+' have gone quieter than usual. ':'')
+        +(b?'Over the long arc, '+b+' hold less room than the rest.':'');
+    if(!a&&!b) body='Evenly held, across both the near and the long view.';
+  } else if(smPhase==='as it is'){
+    body='The shape as your check-ins have made it.';
+  } else {
+    body='&nbsp;';
+  }
+  el.innerHTML='<span class="enc-ph">'+smPhase+'</span>'+body;
+  el.style.opacity=(smPhase==='opening out'||smPhase==='drawing together')?'0.35':'1';
+}
+
+// Crossfade every node between what IS and what would BALANCE it, then let
+// size, reach and territory all follow from the blend. The shift is physical:
+// under-tended areas swell and draw in, over-tended ones ease back.
+function applyEncouragement(){
+  for(var i=0;i<nodes.length;i++){
+    var n=nodes[i];
+    if(n.gravEnc===undefined) continue;
+    n.grav=n.gravNow+(n.gravEnc-n.gravNow)*smEnc;
+  }
+  for(var j=0;j<jellies.length;j++){
+    var J=jellies[j];
+    J.R0=Math.max(J.Rmin, 165+205*(J.head.grav||0));
+    for(var a=0;a<J.arms.length;a++) J.arms[a]._reach=J.R0*(0.52+0.88*(1-(J.arms[a].grav||0)));
+  }
 }
 
 function pulseJellies(_t){
+  applyEncouragement();
   for(var ji=0;ji<jellies.length;ji++){
     var J=jellies[ji];
     var ph=((_t-J.t0)%J.period)/J.period;
@@ -4379,10 +4455,19 @@ function pulseJellies(_t){
       for(var s3=0;s3<J.all.length;s3++){ J.all[s3].vx-=J.head.x/hd*back; J.all[s3].vy-=J.head.y/hd*back; }
       ax-=J.head.x/hd*1.4; ay-=J.head.y/hd*1.4;
     }
-    // ── The current: one slow gyre through the whole body of water, applied
-    // bodily so each animal drifts in it rather than being stirred apart.
-    var gx=(-J.head.y*0.000013)+Math.sin(_t*0.000037+J.head.y*0.00075)*0.040;
-    var gy=( J.head.x*0.000013)+Math.cos(_t*0.000029+J.head.x*0.00068)*0.040;
+    // ── The current. Not a vortex — a vortex has a middle and everything
+    // circles it. This is a flow field: broad meandering cells that drift and
+    // reshape, handing each animal on to the next. Taken as the curl of a
+    // stream function, so the water never sinks or sources anywhere.
+    var hx0=J.head.x, hy0=J.head.y;
+    var k1=0.00058, k2=0.00033;
+    var p1=_t*0.000029, p2=_t*0.000017;
+    var gx=(-0.052*Math.sin(k1*hx0+p1)*Math.sin(k1*hy0-p1*0.7)
+            +0.038*Math.cos(k2*hx0-p2)*Math.cos(k2*hy0+p2*1.3));
+    var gy=(-0.052*Math.cos(k1*hx0+p1)*Math.cos(k1*hy0-p1*0.7)
+            +0.038*Math.sin(k2*hx0-p2)*Math.sin(k2*hy0+p2*1.3));
+    var lean=_t*0.0000071;                 // the whole body of water leans, slowly
+    gx+=Math.cos(lean)*0.016; gy+=Math.sin(lean)*0.016;
     for(var s4=0;s4<J.all.length;s4++){ J.all[s4].vx+=gx; J.all[s4].vy+=gy; }
     J.hx+=ax*J.turn; J.hy+=ay*J.turn;
     var hl=Math.hypot(J.hx,J.hy)||1; J.hx/=hl; J.hy/=hl;
@@ -4782,7 +4867,9 @@ function render(){
     if(n.x+half<L||n.x-half>R2||n.y+half<T||n.y-half>B){ n._vis=false; continue; }
     n._vis=true; n._sc=sc; n._nb=isNb; n._fc=isFocus;
     var op = focusNode ? (isFocus||isNb?1:(1-0.7*fMix)) : 1;
-    smCtx.globalAlpha = op * (n._twk?twk:1);
+    // during the balancing phase, what is being encouraged also brightens
+    var enc=(n.longNeed||0)+(n.shortNeed||0);
+    smCtx.globalAlpha = op * (n._twk?twk:1) * (1-0.28*smEnc*(1-Math.min(1,enc*2.2)));
     smCtx.drawImage(n._spr, n.x-half, n.y-half, n._sprBox*sc, n._sprBox*sc);
   }
   for(var i3=0;i3<nodes.length;i3++){
@@ -5149,6 +5236,7 @@ window.openStarMap = function(){
     buildDOM();
     focusNode=null; focusOn=false; fMix=0; VIEW.w=3900; VIEW.tw=3900; alpha=1; spinV=0;
     render();   // first frame synchronously — don't wait on rAF
+    smPhase=''; bloomCycle(performance.now()); smCaption();
     if(!_wired){
       wire();
       window.addEventListener('resize',function(){
