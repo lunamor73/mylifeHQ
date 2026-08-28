@@ -1,6 +1,6 @@
 // mylifeHQ Service Worker
 // Bump CACHE_NAME whenever you push an update — forces all saved PWAs to refresh
-const CACHE_NAME = 'mylifehq-20260828-syncfix';
+const CACHE_NAME = 'mylifehq-20260828-wisdomlegend';
 const CORE_FILES = [
   './mylifeHQoraculum.html',
   './mylifeHQmundus.html',

@@ -2528,9 +2528,9 @@ function mundusCopy() {
 .sm-tt-domain{font-size:9px;letter-spacing:0.16em;text-transform:uppercase;opacity:0.55;margin-bottom:3px;color:var(--text)}
 .sm-tt-status{font-size:11px;margin-top:5px;color:var(--muted)}
 .sm-tt-items{font-size:10px;margin-top:6px;opacity:0.75;color:var(--text);line-height:1.5}
-.sm-legend{position:absolute;bottom:14px;left:0;right:0;display:flex;justify-content:center;gap:14px;font-size:9px;letter-spacing:0.1em;text-transform:uppercase;opacity:0.75;color:var(--muted);z-index:4}
+.sm-legend{position:absolute;bottom:14px;left:0;right:0;display:flex;flex-wrap:wrap;justify-content:center;gap:10px 18px;font-size:18px;letter-spacing:0.1em;text-transform:uppercase;opacity:0.75;color:var(--muted);z-index:4}
 .sm-legend span{display:flex;align-items:center;gap:4px}
-.sm-dot{width:7px;height:7px;border-radius:50%;display:inline-block}
+.sm-dot{width:14px;height:14px;border-radius:50%;display:inline-block}
 @keyframes smTwinkle{0%,100%{opacity:1}50%{opacity:0.55}}
 .sm-star-lit{animation:smTwinkle 3.2s ease-in-out infinite}
 #sm-encourage{position:absolute;left:14px;bottom:14px;z-index:7;max-width:min(420px,72vw);
@@ -5102,7 +5102,7 @@ function showStarWisdom(n){
   div.style.width=(half*2)+'px';
   body.appendChild(div);
   requestAnimationFrame(function(){div.classList.add('in');});
-  setTimeout(function(){div.classList.remove('in');setTimeout(function(){div.remove();},700);},2600);
+  setTimeout(function(){div.classList.remove('in');setTimeout(function(){div.remove();},700);},5200);
 }
 var smHoldTimer=null, smHoldNode=null;
 function smCancelHold(){ if(smHoldTimer){clearTimeout(smHoldTimer);smHoldTimer=null;} smHoldNode=null; }
@@ -6026,7 +6026,7 @@ function showWisdom(n){
   div.style.width=(half*2)+'px';
   body.appendChild(div);
   requestAnimationFrame(function(){ div.classList.add('in'); });
-  setTimeout(function(){ div.classList.remove('in'); setTimeout(function(){ div.remove(); },700); },2600);
+  setTimeout(function(){ div.classList.remove('in'); setTimeout(function(){ div.remove(); },700); },5200);
 }
 
 function flyTo(x,y,w){
