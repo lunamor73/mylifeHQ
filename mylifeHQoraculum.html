@@ -3370,15 +3370,17 @@ let _setItemWrapped = false;
 let _fbOrigSet = null;
 
 const _pushTimers = {};
+let _readyPromise = null;   // resolves once auth + initial cloud pull/merge are done
 function pushToCloud(key) {
   clearTimeout(_pushTimers[key]);
   _pushTimers[key] = setTimeout(async () => {
+    if (_readyPromise) { try { await _readyPromise; } catch(e) { return; } }
     if (_syncing) return;
     const raw  = localStorage.getItem(key);
     const data = raw ? JSON.parse(raw) : [];
     try { await setDoc(ref(key), { entries: data, updatedAt: Date.now() }); }
     catch(e) { console.warn('[LUNAMOR sync] write error', key, e.message); }
-  }, 800);
+  }, 300);
 }
 
 function ref(key) { return doc(db, 'users', USER_ID, 'data', key); }
@@ -3554,13 +3556,41 @@ function triggerRerender() {
   window.dispatchEvent(new StorageEvent('storage', { key: HIST_KEY }));
 }
 
+/* Wrap setItem FIRST, synchronously — before any auth/network round trip —
+   so a check-in made in the first instant the page is open is still
+   captured and queued. The actual network write inside pushToCloud()
+   waits on _readyPromise (see above), so it never fires before auth is
+   live and the initial cloud merge has landed locally — that ordering
+   is what stops an early write from clobbering cloud entries that
+   haven't been pulled down yet. v3.5, 28 Aug 2026. */
+wrapSetItem();
+
+function flushPendingPushes() {
+  Object.keys(_pushTimers).forEach(key => {
+    if (!_pushTimers[key]) return;
+    clearTimeout(_pushTimers[key]);
+    _pushTimers[key] = null;
+    (async () => {
+      if (_readyPromise) { try { await _readyPromise; } catch(e) { return; } }
+      const raw  = localStorage.getItem(key);
+      const data = raw ? JSON.parse(raw) : [];
+      try { await setDoc(ref(key), { entries: data, updatedAt: Date.now() }); }
+      catch(e) { console.warn('[LUNAMOR sync] flush error', key, e.message); }
+    })();
+  });
+}
+document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') flushPendingPushes(); });
+window.addEventListener('pagehide', flushPendingPushes);
+
 async function main() {
-  try { await waitForAuth(); }
+  _readyPromise = (async () => {
+    await waitForAuth();
+    await pullFromCloud();
+    listenForRemoteChanges();
+  })();
+  try { await _readyPromise; }
   catch(e) { console.warn('[LUNAMOR sync] disabled — no auth session'); return; }
-  await pullFromCloud();
-  listenForRemoteChanges();
-  wrapSetItem();
-  console.log('[LUNAMOR sync] active — v3.4 (anonymous auth + direct archive in setItem)');
+  console.log('[LUNAMOR sync] active — v3.5 (setItem wrapped pre-auth; push waits on ready)');
 }
 
 main();
