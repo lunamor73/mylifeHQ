@@ -622,6 +622,7 @@
     <button class="p1-oracle" onclick="openInsightsWithOracle()"><span class="p1-btn-sub">Weekly</span><span class="p1-btn-main">Oraculum</span></button>
     <button class="p1-season p1-season-teal" onclick="openSeasonReview()" id="p1-season-btn"><span class="p1-btn-sub">Seasonal</span><span class="p1-btn-main">Oraculum</span></button>
     <button class="p1-season p1-solar-amber" onclick="openSolarYearFresh()"><span class="p1-btn-sub">Solar Year</span><span class="p1-btn-main">Oraculum</span></button>
+    <button class="p1-season p1-rites-plum" onclick="openRites()"><span class="p1-btn-sub">Rites of Passage</span><span class="p1-btn-main">Oraculum</span></button>
   </div>
   <div class="oracle-toast" id="oracle-toast">Prompt copied — paste into Claude ✓</div>
 </div>
@@ -2105,7 +2106,7 @@ function generateOraclePrompt() {
     '- Human Design: Manifesting Generator 5/2, Emotional Authority, Channels 53-42 / 32-54 / 63-4',
     '- Mayan Tzolkin: White Rhythmic Dog (Kin 6)',
     '- Flow Genome Project: Flow Goer (primary) + Deep Thinker (secondary); full library available (flow triggers, hedonic calendaring, FSDR, Recapture the Rapture, Stealing Fire)',
-    '- Wellbeing source texts (18 traditions): Campbell (Hero\'s Journey / Power of Myth), Jung (soul psychology / individuation), Moore (Care of the Soul), Jodorowsky (Psychomagic), Patanjali (Yoga-sutra), FGP (flow profiles / hedonic calendaring / FSDR), Breathology/Severinsen (freediving breathwork), Vā Moana/Refiti et al. (Pacific vā — sacred relational space; LUNAVĀ), Estés (Women Who Run With the Wolves — wild nature / story as medicine), Descent/Inanna/Persephone (underworld logic / surrender as wisdom), Lunar cycle (dark moon / fallow time intelligence), Woodman (body as soul / conscious femininity), AMB/Emergent Strategy (fractal practice / pleasure as political / emergence), Ubuntu (umuntu ngumuntu ngabantu — I am because we are), Pachamama (ayni/reciprocity / land as sentient), Tao Te Ching feminine (wu wei / yielding as strength), Somatic — Levine/van der Kolk (body keeps the score / window of tolerance), Country/Ngangkari/First Nations AU (30yr lived relationship — Songlines / deep time)',
+    '- Wellbeing source texts (19 traditions): Campbell (Hero\'s Journey / Power of Myth), Jung (soul psychology / individuation), Moore (Care of the Soul), rites of passage — van Gennep/Turner/Grimes (thresholds / liminality / made rites), Seidenstein (Clown Secret / Quantum Theatre — play, the profound and the mundane), Patanjali (Yoga-sutra), FGP (flow profiles / hedonic calendaring / FSDR), Breathology/Severinsen (freediving breathwork), Vā Moana/Refiti et al. (Pacific vā — sacred relational space; LUNAVĀ), Estés (Women Who Run With the Wolves — wild nature / story as medicine), Descent/Inanna/Persephone (underworld logic / surrender as wisdom), Lunar cycle (dark moon / fallow time intelligence), Woodman (body as soul / conscious femininity), AMB/Emergent Strategy (fractal practice / pleasure as political / emergence), Ubuntu (umuntu ngumuntu ngabantu — I am because we are), Pachamama (ayni/reciprocity / land as sentient), Tao Te Ching feminine (wu wei / yielding as strength), Somatic — Levine/van der Kolk (body keeps the score / window of tolerance), Country/Ngangkari/First Nations AU (30yr lived relationship — Songlines / deep time)',
     `- Current year: ${personalYearLabel(NOW)}`,
     '',
     'RECENT CHECK-IN DATA:',
@@ -2156,7 +2157,7 @@ function generateWeeklyPrompt() {
     '- Human Design: Manifesting Generator 5/2, Emotional Authority, Channels 53-42 / 32-54 / 63-4',
     '- Mayan Tzolkin: White Rhythmic Dog (Kin 6)',
     '- Flow Genome Project: Flow Goer (primary) + Deep Thinker (secondary); full library available (flow triggers, hedonic calendaring, FSDR, Recapture the Rapture, Stealing Fire)',
-    '- Wellbeing source texts (18 traditions): Campbell (Hero\'s Journey / Power of Myth), Jung (soul psychology / individuation), Moore (Care of the Soul), Jodorowsky (Psychomagic), Patanjali (Yoga-sutra), FGP (flow profiles / hedonic calendaring / FSDR), Breathology/Severinsen (freediving breathwork), Vā Moana/Refiti et al. (Pacific vā — sacred relational space; LUNAVĀ), Estés (Women Who Run With the Wolves — wild nature / story as medicine), Descent/Inanna/Persephone (underworld logic / surrender as wisdom), Lunar cycle (dark moon / fallow time intelligence), Woodman (body as soul / conscious femininity), AMB/Emergent Strategy (fractal practice / pleasure as political / emergence), Ubuntu (umuntu ngumuntu ngabantu — I am because we are), Pachamama (ayni/reciprocity / land as sentient), Tao Te Ching feminine (wu wei / yielding as strength), Somatic — Levine/van der Kolk (body keeps the score / window of tolerance), Country/Ngangkari/First Nations AU (30yr lived relationship — Songlines / deep time)',
+    '- Wellbeing source texts (19 traditions): Campbell (Hero\'s Journey / Power of Myth), Jung (soul psychology / individuation), Moore (Care of the Soul), rites of passage — van Gennep/Turner/Grimes (thresholds / liminality / made rites), Seidenstein (Clown Secret / Quantum Theatre — play, the profound and the mundane), Patanjali (Yoga-sutra), FGP (flow profiles / hedonic calendaring / FSDR), Breathology/Severinsen (freediving breathwork), Vā Moana/Refiti et al. (Pacific vā — sacred relational space; LUNAVĀ), Estés (Women Who Run With the Wolves — wild nature / story as medicine), Descent/Inanna/Persephone (underworld logic / surrender as wisdom), Lunar cycle (dark moon / fallow time intelligence), Woodman (body as soul / conscious femininity), AMB/Emergent Strategy (fractal practice / pleasure as political / emergence), Ubuntu (umuntu ngumuntu ngabantu — I am because we are), Pachamama (ayni/reciprocity / land as sentient), Tao Te Ching feminine (wu wei / yielding as strength), Somatic — Levine/van der Kolk (body keeps the score / window of tolerance), Country/Ngangkari/First Nations AU (30yr lived relationship — Songlines / deep time)',
     `- Current year: ${personalYearLabel(NOW)}`,
     '',
     `FULL WEEK CHECK-IN DATA (${week.length} entries, last 7 days):`,
@@ -2235,7 +2236,7 @@ function generatePenguinHQPrompt() {
     '- Human Design: Manifesting Generator 5/2, Emotional Authority, Channels 53-42 / 32-54 / 63-4',
     '- Mayan Tzolkin: White Rhythmic Dog (Kin 6)',
     '- Flow Genome Project: Flow Goer (primary) + Deep Thinker (secondary); full library available (flow triggers, hedonic calendaring, FSDR, Recapture the Rapture, Stealing Fire)',
-    '- Wellbeing source texts (18 traditions): Campbell (Hero\'s Journey / Power of Myth), Jung (soul psychology / individuation), Moore (Care of the Soul), Jodorowsky (Psychomagic), Patanjali (Yoga-sutra), FGP (flow profiles / hedonic calendaring / FSDR), Breathology/Severinsen (freediving breathwork), Vā Moana/Refiti et al. (Pacific vā — sacred relational space; LUNAVĀ), Estés (Women Who Run With the Wolves — wild nature / story as medicine), Descent/Inanna/Persephone (underworld logic / surrender as wisdom), Lunar cycle (dark moon / fallow time intelligence), Woodman (body as soul / conscious femininity), AMB/Emergent Strategy (fractal practice / pleasure as political / emergence), Ubuntu (umuntu ngumuntu ngabantu — I am because we are), Pachamama (ayni/reciprocity / land as sentient), Tao Te Ching feminine (wu wei / yielding as strength), Somatic — Levine/van der Kolk (body keeps the score / window of tolerance), Country/Ngangkari/First Nations AU (30yr lived relationship — Songlines / deep time)',
+    '- Wellbeing source texts (19 traditions): Campbell (Hero\'s Journey / Power of Myth), Jung (soul psychology / individuation), Moore (Care of the Soul), rites of passage — van Gennep/Turner/Grimes (thresholds / liminality / made rites), Seidenstein (Clown Secret / Quantum Theatre — play, the profound and the mundane), Patanjali (Yoga-sutra), FGP (flow profiles / hedonic calendaring / FSDR), Breathology/Severinsen (freediving breathwork), Vā Moana/Refiti et al. (Pacific vā — sacred relational space; LUNAVĀ), Estés (Women Who Run With the Wolves — wild nature / story as medicine), Descent/Inanna/Persephone (underworld logic / surrender as wisdom), Lunar cycle (dark moon / fallow time intelligence), Woodman (body as soul / conscious femininity), AMB/Emergent Strategy (fractal practice / pleasure as political / emergence), Ubuntu (umuntu ngumuntu ngabantu — I am because we are), Pachamama (ayni/reciprocity / land as sentient), Tao Te Ching feminine (wu wei / yielding as strength), Somatic — Levine/van der Kolk (body keeps the score / window of tolerance), Country/Ngangkari/First Nations AU (30yr lived relationship — Songlines / deep time)',
     `- Current year: ${personalYearLabel(NOW)}`,
     '',
     `\u2501\u2501 ORACULUM \u2014 CHECK-IN DATA (last 7 days, ${week.length} entries) \u2501\u2501`,
@@ -2623,6 +2624,103 @@ function mundusCopy() {
     <div id="sy-insights" class="ins-body" style="padding:0;margin-top:22px"></div>
     <button class="sr-oracle-btn" onclick="generateSolarOracle()">Generate Solar Year Oracle</button>
     <div class="sr-toast" id="sy-toast"></div>
+  </div>
+</div>
+
+
+<!-- == P13: RITES OF PASSAGE ORACULUM (button 4, added 3 Nov 2026) == -->
+<style>
+.p1-season.p1-rites-plum{border:1.5px solid #7d4e8a;background:rgba(125,78,138,0.10);color:#7d4e8a}
+.p1-season.p1-rites-plum:active{background:#7d4e8a;color:#fff}
+.ri-door{border:1.5px solid rgba(125,78,138,0.45);background:rgba(125,78,138,0.07);border-radius:14px;padding:16px 16px 14px;margin:8px 0 18px}
+.ri-door-fam{font-size:10px;letter-spacing:0.16em;text-transform:uppercase;color:#7d4e8a;font-weight:700;margin-bottom:6px;line-height:1.5}
+.ri-door-desc{font-size:12px;color:var(--muted);line-height:1.45;margin:-2px 0 10px}
+.ri-door-q{font-size:16px;line-height:1.5;color:var(--fg)}
+.ri-door-hint{font-size:12px;color:var(--muted);line-height:1.5;margin-top:10px}
+.ri-row{display:flex;gap:8px;margin-top:12px;flex-wrap:wrap;align-items:center}
+.ri-btn{padding:9px 14px;border-radius:10px;border:1.5px solid #7d4e8a;background:transparent;color:#7d4e8a;font-size:11px;font-weight:700;letter-spacing:1.2px;text-transform:uppercase;cursor:pointer}
+.ri-btn.solid{background:#7d4e8a;color:#fff}
+.ri-btn:active{background:#7d4e8a;color:#fff}
+.ri-btn.quiet{border-color:var(--muted);color:var(--muted)}
+.ri-btn.quiet:active{background:var(--muted);color:#fff}
+.ri-form{display:none;margin:4px 0 24px;padding-top:4px}
+.ri-form.open{display:block}
+.ri-f{margin-bottom:16px}
+.ri-f label,.ri-f .ri-lbl{display:block;font-size:10px;letter-spacing:0.14em;text-transform:uppercase;color:var(--muted);font-weight:600;margin-bottom:5px}
+.ri-hint{font-size:12px;color:var(--muted);margin:0 0 6px;line-height:1.45}
+.ri-f textarea,.ri-f input,.ri-f select{width:100%;box-sizing:border-box;font-family:inherit;font-size:15px;color:var(--fg);background:rgba(127,127,127,0.06);border:1px solid rgba(127,127,127,0.3);border-radius:10px;padding:10px 12px}
+.ri-f textarea{min-height:84px;resize:vertical;line-height:1.5}
+.ri-f textarea.tall{min-height:170px}
+.ri-pills{display:flex;gap:8px;flex-wrap:wrap}
+.ri-pill{padding:7px 14px;border-radius:999px;border:1px solid rgba(127,127,127,0.35);background:transparent;color:var(--fg);font-size:13px;cursor:pointer}
+.ri-pill.sel{border-color:#7d4e8a;background:rgba(125,78,138,0.15);color:#7d4e8a;font-weight:600}
+.ri-item{padding:12px 0;border-bottom:1px solid rgba(127,127,127,0.18);cursor:pointer}
+.ri-item-name{font-size:15px;color:var(--fg);font-weight:600}
+.ri-item-meta{font-size:12px;color:var(--muted);margin-top:3px}
+.ri-check{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--muted);margin-top:20px}
+.ri-msg{font-size:12px;color:#7d4e8a;min-height:16px;margin-top:8px}
+.ri-note{font-size:12px;color:var(--muted);line-height:1.5;margin-top:10px}
+</style>
+<div id="p13" class="page">
+  <div class="top-bar">
+    <button class="back-btn" onclick="nav('p1')">&#8592; Back</button>
+    <div style="width:60px"></div>
+  </div>
+  <div class="sr-header">
+    <div class="sr-h-weekly">Rites of Passage</div>
+    <div class="sr-h-oraculum">Oraculum</div>
+    <div class="sr-h-season">Lifetime</div>
+    <div class="sr-h-range" id="ri-range"></div>
+  </div>
+  <div class="sr-body">
+    <div class="sr-desc">The lifetime lens: every check-in you've logged, plus the moments you write here. It finds, names and helps mark the thresholds.</div>
+    <div class="sr-month-label" id="ri-label"></div>
+
+    <div class="sr-section-label">This moon's door</div>
+    <div class="ri-door">
+      <div class="ri-door-fam" id="ri-door-fam"></div>
+      <div class="ri-door-desc" id="ri-door-desc"></div>
+      <div class="ri-door-q" id="ri-door-q"></div>
+      <div class="ri-door-hint">When nothing comes: first times and last times · every house you've lived in, room by room · a song that splits your life into before and after · a scar · a photo · a smell · a goodbye · a mundane day that turned out to be the hinge.</div>
+      <div class="ri-row">
+        <button class="ri-btn solid" onclick="riNew()">Write this story</button>
+        <button class="ri-btn quiet" onclick="riOtherDoor()">Another door</button>
+      </div>
+    </div>
+
+    <div class="ri-form" id="ri-form">
+      <div class="ri-f"><span class="ri-lbl">The door</span><div class="ri-hint" id="ri-f-door"></div></div>
+      <div class="ri-f"><label for="ri-when">When</label><input id="ri-when" placeholder="a date, a year, an age"></div>
+      <div class="ri-f"><label for="ri-moment">The moment</label><div class="ri-hint">One moment, not a period. Present tense, as though it's happening: where you are, what you see, hear and smell, what your body is doing.</div><textarea id="ri-moment" class="tall"></textarea></div>
+      <div class="ri-f"><label for="ri-ba">Before / after</label><div class="ri-hint">Who were you just before? Just after? What stayed on the other side?</div><textarea id="ri-ba"></textarea></div>
+      <div class="ri-f"><label for="ri-witness">Witness</label><div class="ri-hint">Who saw it? Who should have? Was it ever named or marked?</div><textarea id="ri-witness"></textarea></div>
+      <div class="ri-f"><span class="ri-lbl">Edge</span><div class="ri-hint">Were you lost in it, time bending, effortless, everything vivid?</div><div class="ri-pills" id="ri-edge"></div></div>
+      <div class="ri-f"><label for="ri-name">Name</label><div class="ri-hint">Your name for it first. The oraculum can offer others.</div><input id="ri-name"></div>
+      <div class="ri-f"><label for="ri-family">Family</label><select id="ri-family"></select></div>
+      <div class="ri-f"><span class="ri-lbl">Phase</span><div class="ri-pills" id="ri-phase"></div></div>
+      <div class="ri-f"><label for="ri-act">Mark it (optional)</label><div class="ri-hint">Does it still need marking? Design an act: a place, an object, an action, a witness, words. You author it, and nothing is done to anyone else.</div><textarea id="ri-act"></textarea></div>
+      <div class="ri-f"><label for="ri-letter">Letter back (after the act)</label><div class="ri-hint">What happened, what changed. This closes the rite.</div><textarea id="ri-letter"></textarea></div>
+      <div class="ri-row">
+        <button class="ri-btn solid" onclick="riSave()">Save</button>
+        <button class="ri-btn quiet" onclick="riClose()">Close</button>
+        <button class="ri-btn quiet" id="ri-del" onclick="riDelete()" style="margin-left:auto;display:none">Delete</button>
+      </div>
+      <div class="ri-msg" id="ri-form-msg"></div>
+    </div>
+
+    <div class="sr-section-label">Your Rites Walk</div>
+    <div id="ri-list"></div>
+
+    <label class="ri-check"><input type="checkbox" id="ri-raw"> Include raw check-ins (deep reading)</label>
+    <button class="sr-oracle-btn" onclick="generateRitesOracle()">Generate Rites Oracle</button>
+    <div class="sr-toast" id="ri-toast"></div>
+
+    <div class="ri-row" style="margin-top:22px">
+      <button class="ri-btn quiet" onclick="riExport()">Save a backup</button>
+      <button class="ri-btn quiet" onclick="document.getElementById('ri-import').click()">Restore a backup</button>
+      <input type="file" id="ri-import" accept="application/json,.json" style="display:none" onchange="riImport(this)">
+    </div>
+    <div class="ri-note">Your Rites Walk stays on this device. It isn't synced to the cloud, so save a backup to keep it safe or move it to another device.</div>
   </div>
 </div>
 
@@ -4064,7 +4162,7 @@ window.generateOraclePrepPrompt = function(rangeArg, toastId){
     '- Human Design: Manifesting Generator 5/2, Emotional Authority, Channels 53-42 / 32-54 / 63-4',
     '- Mayan Tzolkin: White Rhythmic Dog (Kin 6)',
     '- Flow Genome Project: Flow Goer (primary) + Deep Thinker (secondary)',
-    '- 18 Wellbeing traditions (Campbell, Jung, Moore, Jodorowsky, Patanjali, FGP, Breathology, Vā Moana, Estés, Lunar cycle, Woodman, AMB, Ubuntu, Pachamama, Tao, Somatic, Country/Ngangkari)',
+    '- 19 Wellbeing traditions (Campbell, Jung, Moore, rites of passage (van Gennep/Turner/Grimes), Seidenstein, Patanjali, FGP, Breathology, Vā Moana, Estés, Lunar cycle, Woodman, AMB, Ubuntu, Pachamama, Tao, Somatic, Country/Ngangkari)',
     '- Personal Year: '+personalYearLabel(NOW2),
     '',
     'CHECK-IN DATA ('+rangeLabel+' · '+entries.length+' entries · '+Math.floor(tm/60)+'h '+tm%60+'m):',
@@ -6331,6 +6429,269 @@ window.generateSolarOracle=function(){
     navigator.clipboard.writeText(prompt).then(show).catch(function(){fb();});
   } else fb();
   function fb(){var ta=document.createElement('textarea');ta.value=prompt;document.body.appendChild(ta);ta.select();document.execCommand('copy');document.body.removeChild(ta);show();}
+};
+})();
+</script>
+
+<script>
+// ══ RITES OF PASSAGE ORACULUM — the lifetime lens (button 4, added 3 Nov 2026) ══
+// Rites Walk stories live in localStorage 'phq-rites' ONLY. They are deliberately
+// not in the Firebase SYNC_KEYS: they stay on this device; backup/restore moves them.
+(function(){
+var RITES_KEY='phq-rites';
+var RI_FAMILIES=[
+  {n:"Arrival",d:"birth, naming, adoption, arriving somewhere new",q:["What do you know about the day you arrived, and who told you?","Where does your name come from? Have you changed it, or been given another?","The first place that felt like yours: when did you know?"]},
+  {n:"Emergence",d:"childhood into adolescence, first times, leaving home",q:["The first time you did alone what you'd only done with others.","The moment you knew you weren't a child any more.","Leaving home: the last night, the first night."]},
+  {n:"Becoming",d:"identity, coming out or coming in, gender, body, ancestry, faith, a diagnosis that re-reads the self",q:["A moment you told someone who you are, or told yourself.","Something you learned about your ancestry that changed how you see yourself.","A word for yourself that fit for the first time, or stopped fitting."]},
+  {n:"Union",d:"love, partnership, marriage, chosen family, friendship",q:["The moment you knew you loved someone, and whether you said it.","A friendship that became family: when did it cross over?","A promise you made out loud."]},
+  {n:"Tending",d:"becoming a parent, carer, grandparent, mentor; the care turning around",q:["The first moment you were responsible for another life.","When the care turned around and someone who cared for you began to need you.","The first time you saw your child as an adult."]},
+  {n:"Mastery",d:"learning recognised, formal or not; skill acquired; teaching what you were taught",q:["The first time something you'd struggled with did itself.","When someone first called you by your craft.","The first time you taught what you'd been taught."]},
+  {n:"Making & Calling",d:"first creation, release, performance, founding; vocation found, changed, retired from",q:["The first thing you made that left your hands and lived without you.","The moment you knew what your work was.","A role you walked away from: the last day."]},
+  {n:"Edge",d:"peaks, flow, ordeal, wild places, high consequence",q:["A moment you were so absorbed you disappeared.","An edge you went to on purpose, and what was waiting there.","A time the sea, the land or the weather decided for you."]},
+  {n:"Descent & Return",d:"illness, injury, burnout, grief, depression; recovery as the return",q:["A time life took you under (share only what you want).","The first morning you knew you were coming back.","What the descent took, and what it gave back."]},
+  {n:"Severance",d:"separation, divorce, estrangement; leaving a home, faith, country, or an old self",q:["A door you closed behind you: did you look back?","Something you outgrew: a place, a belief, a version of you.","A goodbye that was never said."]},
+  {n:"Age Chapters & Elderhood",d:"decade thresholds, cycle years, body change, maturing, old age, becoming an elder",q:["A birthday that felt like a border.","The first time someone younger came to you for wisdom.","What you're carrying into your next chapter, and what you're leaving at the door."]},
+  {n:"Ending",d:"bereavement, anticipatory grief, legacy, one's own mortality",q:["Someone whose death changed who you are: what did they hand you?","A ritual you made, or wish you'd made, for a goodbye.","What do you want to hand on, and to whom?"]},
+  {n:"Dreaming",d:"night dreams and life dreams: the bucket list, rites not yet lived",q:["A dream that stayed with you for years: what was happening in your life when it came, and what act would answer it?","A dream animal or figure that returns: when does it appear?","A life dream not yet lived: what threshold stands between you and it?"]}
+];
+var RI_PHASES=[{id:'crossed',l:'Crossed'},{id:'threshold',l:'In the threshold'},{id:'unmarked',l:'Unmarked'},{id:'approaching',l:'Approaching'}];
+var RI_EDGE=[{id:'yes',l:'Yes'},{id:'unsure',l:'Not sure'},{id:'no',l:'No'}];
+var RI_ZLAB={support:'With Support',stretching:'Stretching',flow:'In Flow'};
+var RI_ZRANK={support:0,stretching:1,flow:2};
+var RI_TLAB={'high-tide':'High','pouring-out':'Outgoing','filling-up':'Incoming','low-tide':'Low'};
+var RI_XLAB={'giving':'Giving','receiving':'Receiving','giving & receiving':'Both'};
+var DAY=86400000, SYN=29.53058867, KNOWN_NEW=Date.parse('2000-01-06T18:14:00Z');
+var riShift=0, riEditId=null, riSel={edge:'',phase:'',door:''}, riDelArmed=false;
+
+function riLoad(){try{var a=JSON.parse(localStorage.getItem(RITES_KEY)||'[]');return Array.isArray(a)?a.filter(function(r){return r&&r.id;}):[];}catch(e){return[];}}
+function riStore(a){localStorage.setItem(RITES_KEY,JSON.stringify(a));}
+function riEsc(s){return String(s==null?'':s).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];});}
+function riFmt(d){return d.getDate()+' '+['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][d.getMonth()]+' '+d.getFullYear();}
+function riAge(now){var a=now.getFullYear()-1973;if(now<new Date(now.getFullYear(),6,12))a--;return a;}
+function riFam(n){return RI_FAMILIES[(parseInt(n,10)||0)-1]||null;}
+function riLabel(list,id){var o=list.filter(function(p){return p.id===id;})[0];return o?o.l:'';}
+function riByNewest(a,b){return String(b.created||'').localeCompare(String(a.created||''));}
+
+// one door per new moon: cycles the 13 families, then the next door in each
+function riDoor(){
+  var L=Math.floor((Date.now()-KNOWN_NEW)/DAY/SYN)+riShift;
+  var fi=((L%13)+13)%13, k=((Math.floor(L/13)%3)+3)%3;
+  return {fi:fi, fam:RI_FAMILIES[fi], q:RI_FAMILIES[fi].q[k]};
+}
+
+// all-time check-ins (history + archive), oldest first
+function riAll(){
+  var list=(typeof srEntries==='function')?srEntries(0,0,true):[];
+  return list.map(function(e){return {e:e,d:new Date(e.ts)};})
+    .filter(function(x){return !isNaN(x.d.getTime());})
+    .sort(function(a,b){return a.d-b.d;});
+}
+
+// ── page ──
+window.openRites=function(){riShift=0;riClose();riRender();nav('p13');};
+function riRender(){
+  var all=riAll(), rites=riLoad(), now=new Date();
+  document.getElementById('ri-range').textContent=all.length?riFmt(all[0].d)+' → '+riFmt(now):'No check-ins yet';
+  document.getElementById('ri-label').textContent=all.length+' check-in'+(all.length!==1?'s':'')+' · '+rites.length+' Rites Walk entr'+(rites.length!==1?'ies':'y');
+  var door=riDoor();
+  document.getElementById('ri-door-fam').textContent=(door.fi+1)+' · '+door.fam.n;
+  document.getElementById('ri-door-desc').textContent=door.fam.d;
+  document.getElementById('ri-door-q').textContent=door.q;
+  var el=document.getElementById('ri-list');
+  if(!rites.length){el.innerHTML='<div class="sr-empty">No stories yet. Start with this moon\'s door.</div>';return;}
+  el.innerHTML=rites.slice().sort(riByNewest).map(function(r){
+    var f=riFam(r.family);
+    var meta=[r.when,f?f.n:'',riLabel(RI_PHASES,r.phase)].filter(Boolean).join(' · ')||('written '+riFmt(new Date(r.created)));
+    return '<div class="ri-item" onclick="riOpen('+Number(r.id)+')"><div class="ri-item-name">'+riEsc(r.name||'Unnamed')+'</div><div class="ri-item-meta">'+riEsc(meta)+'</div></div>';
+  }).join('');
+}
+function riPills(boxId,opts,key){
+  var box=document.getElementById(boxId); box.innerHTML='';
+  opts.forEach(function(o){
+    var b=document.createElement('button'); b.type='button';
+    b.className='ri-pill'+(riSel[key]===o.id?' sel':''); b.textContent=o.l;
+    b.onclick=function(){riSel[key]=(riSel[key]===o.id)?'':o.id; riPills(boxId,opts,key);};
+    box.appendChild(b);
+  });
+}
+var RI_FIELDS={'ri-when':'when','ri-moment':'moment','ri-ba':'beforeAfter','ri-witness':'witness','ri-name':'name','ri-act':'act','ri-letter':'letter'};
+function riFill(r){
+  var door=riDoor(); r=r||{};
+  riSel.edge=r.edge||''; riSel.phase=r.phase||''; riSel.door=r.door||door.q;
+  document.getElementById('ri-f-door').textContent=riSel.door;
+  Object.keys(RI_FIELDS).forEach(function(id){document.getElementById(id).value=r[RI_FIELDS[id]]||'';});
+  var sel=document.getElementById('ri-family');
+  sel.innerHTML='<option value="">—</option>'+RI_FAMILIES.map(function(f,i){return '<option value="'+(i+1)+'">'+(i+1)+' · '+riEsc(f.n)+'</option>';}).join('');
+  sel.value=r.id?(r.family?String(r.family):''):String(door.fi+1);
+  riPills('ri-edge',RI_EDGE,'edge'); riPills('ri-phase',RI_PHASES,'phase');
+  var del=document.getElementById('ri-del'); del.style.display=r.id?'':'none'; del.textContent='Delete'; riDelArmed=false;
+  document.getElementById('ri-form-msg').textContent='';
+  var form=document.getElementById('ri-form'); form.classList.add('open');
+  setTimeout(function(){try{form.scrollIntoView({behavior:'smooth',block:'start'});}catch(e){}},30);
+}
+window.riNew=function(){riEditId=null;riFill(null);};
+window.riOpen=function(id){var r=riLoad().filter(function(x){return x.id===id;})[0];if(!r)return;riEditId=id;riFill(r);};
+window.riOtherDoor=function(){riShift++;riRender();};
+window.riClose=function(){var f=document.getElementById('ri-form');if(f)f.classList.remove('open');riEditId=null;};
+window.riSave=function(){
+  var v=function(id){return document.getElementById(id).value.trim();};
+  var rec={door:riSel.door,edge:riSel.edge,phase:riSel.phase,family:parseInt(v('ri-family'),10)||''};
+  Object.keys(RI_FIELDS).forEach(function(id){rec[RI_FIELDS[id]]=v(id);});
+  if(!rec.moment&&!rec.name){document.getElementById('ri-form-msg').textContent='Write the moment, or give it a name, before saving.';return;}
+  var all=riLoad(), now=new Date().toISOString();
+  if(riEditId){
+    all=all.map(function(x){return x.id===riEditId?Object.assign({},x,rec,{updated:now}):x;});
+  } else {
+    rec.id=Date.now(); rec.created=now; rec.updated=now; all.push(rec);
+  }
+  riStore(all); riClose(); riRender(); riToast('Saved on this device ✓');
+};
+window.riDelete=function(){
+  var b=document.getElementById('ri-del');
+  if(!riDelArmed){riDelArmed=true;b.textContent='Tap again to delete';return;}
+  var id=riEditId; riStore(riLoad().filter(function(x){return x.id!==id;})); riClose(); riRender(); riToast('Deleted');
+};
+function riToast(msg){var t=document.getElementById('ri-toast');t.textContent=msg;t.style.opacity='1';clearTimeout(riToast._t);riToast._t=setTimeout(function(){t.style.opacity='0';},3500);}
+
+// ── backup / restore (local-first) ──
+window.riExport=function(){
+  var data={app:'mylifeHQ',kind:'rites-walk',version:1,exported:new Date().toISOString(),entries:riLoad()};
+  var blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'});
+  var a=document.createElement('a'); a.href=URL.createObjectURL(blob);
+  a.download='rites-walk-'+new Date().toISOString().slice(0,10)+'.json';
+  document.body.appendChild(a); a.click();
+  setTimeout(function(){URL.revokeObjectURL(a.href);a.remove();},1000);
+  riToast('Backup saved ✓');
+};
+window.riImport=function(input){
+  var file=input.files&&input.files[0]; if(!file)return;
+  var rd=new FileReader();
+  rd.onload=function(){
+    try{
+      var d=JSON.parse(rd.result), inc=Array.isArray(d)?d:(d&&d.entries)||[];
+      var byId={}, added=0, updated=0;
+      riLoad().forEach(function(r){byId[r.id]=r;});
+      inc.forEach(function(r){
+        if(!r||!r.id)return;
+        var ex=byId[r.id];
+        if(!ex){byId[r.id]=r;added++;}
+        else if(String(r.updated||'')>String(ex.updated||'')){byId[r.id]=r;updated++;}
+      });
+      riStore(Object.keys(byId).map(function(k){return byId[k];}));
+      riRender(); riToast('Restored: '+added+' new, '+updated+' updated');
+    }catch(e){riToast('That file isn\'t a Rites Walk backup');}
+    input.value='';
+  };
+  rd.readAsText(file);
+};
+
+// ── the prompt ──
+function riPath(e){return [e.domain,e.lunadom].filter(function(v,i,a){return v&&a.indexOf(v)===i;}).join(' › ')||'—';}
+function riDigest(all){
+  var m={};
+  all.forEach(function(x){
+    (x.e.items||[]).forEach(function(it){
+      var k=riPath(x.e)+' › '+it;
+      var o=m[k]||(m[k]={k:k,first:x.d,last:x.d,n:0,mins:0,z:[],t:{},ex:{},firstFlow:null});
+      if(x.d<o.first)o.first=x.d; if(x.d>o.last)o.last=x.d;
+      o.n++; o.mins+=(x.e.timeMins||0);
+      if(RI_ZLAB[x.e.zpd]){o.z.push({z:x.e.zpd,d:x.d}); if(x.e.zpd==='flow'&&!o.firstFlow)o.firstFlow=x.d;}
+      if(x.e.direction)o.t[x.e.direction]=(o.t[x.e.direction]||0)+1;
+      if(x.e.exchange)o.ex[x.e.exchange]=(o.ex[x.e.exchange]||0)+1;
+    });
+  });
+  return Object.keys(m).map(function(k){return m[k];}).sort(function(a,b){return b.n-a.n;});
+}
+function riZonePath(z){
+  var runs=[];
+  z.forEach(function(s){var l=runs[runs.length-1]; if(l&&l.z===s.z)l.c++; else runs.push({z:s.z,c:1});});
+  var p=runs.map(function(r){return RI_ZLAB[r.z]+'×'+r.c;});
+  if(p.length>6)p=p.slice(0,2).concat(['…'],p.slice(-3));
+  return p.join(' → ')||'—';
+}
+function riSplit(o,lab){var ks=Object.keys(o);if(!ks.length)return '—';return ks.sort(function(a,b){return o[b]-o[a];}).map(function(k){return (lab[k]||k)+' '+o[k];}).join(' · ');}
+function riGive(list){var g=0,r=0;list.forEach(function(x){var ex=x.e.exchange;if(ex==='giving')g++;else if(ex==='receiving')r++;else if(ex==='giving & receiving'){g+=0.5;r+=0.5;}});return (g+r)?g/(g+r):null;}
+function riSignals(all,dig,now){
+  var d90=new Date(now-90*DAY), d60=new Date(now-60*DAY), out=[];
+  var neu=dig.filter(function(o){return o.first>=d90;}).map(function(o){return o.k+' (first '+riFmt(o.first)+')';});
+  out.push('NEW — first seen in the last 90 days: '+(neu.join('; ')||'—'));
+  var mig=dig.filter(function(o){return o.z.length>1;}).map(function(o){
+    var a=o.z[0], b=o.z[o.z.length-1], dr=RI_ZRANK[b.z]-RI_ZRANK[a.z];
+    if(!dr)return null;
+    return o.k+': '+RI_ZLAB[a.z]+' ('+riFmt(a.d)+') → '+RI_ZLAB[b.z]+' ('+riFmt(b.d)+')'+(dr>0?', inward':', outward: a new edge')+(dr>0&&o.firstFlow?'; first In Flow '+riFmt(o.firstFlow):'');
+  }).filter(Boolean);
+  out.push('ZONE MIGRATIONS — first zone vs latest: '+(mig.join('; ')||'—'));
+  var setg=dig.filter(function(o){return o.n>=10&&o.last<d60;}).map(function(o){return o.k+' ('+o.n+' check-ins, last '+riFmt(o.last)+')';});
+  out.push('SETTING — 10+ check-ins, none in 60 days: '+(setg.join('; ')||'—'));
+  var byDom={};
+  all.forEach(function(x){var k=x.e.lunadom||x.e.domain||'—';(byDom[k]=byDom[k]||[]).push(x);});
+  var arcs=[], inv=[];
+  Object.keys(byDom).forEach(function(k){
+    var L=byDom[k].filter(function(x){return x.e.direction;}), found=null;
+    for(var i=0;i<L.length;i++){
+      if(L[i].e.direction!=='pouring-out')continue;
+      var lo=null;
+      for(var j=i+1;j<L.length&&(L[j].d-L[i].d)<=30*DAY;j++){
+        if(!lo&&L[j].e.direction==='low-tide')lo=L[j];
+        else if(lo&&L[j].e.direction==='filling-up'){found={a:L[i],b:lo,c:L[j]};break;}
+      }
+    }
+    if(found)arcs.push(k+': Outgoing '+riFmt(found.a.d)+' → Low '+riFmt(found.b.d)+' → Incoming '+riFmt(found.c.d));
+    var A=byDom[k], R=A.filter(function(x){return x.d>=d90;});
+    if(A.length>=10&&R.length>=5){
+      var life=riGive(A), rec=riGive(R);
+      if(life!==null&&rec!==null&&Math.abs(rec-life)>=0.3)inv.push(k+': Giving '+Math.round(life*100)+'% lifetime → '+Math.round(rec*100)+'% in the last 90 days');
+    }
+  });
+  out.push('TIDE ARCS — Outgoing → Low → Incoming within 30 days (latest per sub-domain): '+(arcs.join('; ')||'—'));
+  out.push('EXCHANGE INVERSIONS — 90-day Giving share vs lifetime, 30+ point swing: '+(inv.join('; ')||'—'));
+  return out.join('\n');
+}
+function riRitesBlock(rites){
+  if(!rites.length)return '— none written yet.';
+  return rites.slice().sort(riByNewest).map(function(r){
+    var f=riFam(r.family);
+    var L=['• '+(r.name||'Unnamed')+' · '+(r.when||'when not given')+' · '+(f?f.n:'family not set')+' · '+(riLabel(RI_PHASES,r.phase)||'phase not set')];
+    if(r.door)L.push('  Door: '+r.door);
+    if(r.moment)L.push('  Moment: '+r.moment);
+    if(r.beforeAfter)L.push('  Before/after: '+r.beforeAfter);
+    if(r.witness)L.push('  Witness: '+r.witness);
+    L.push('  Edge: '+(riLabel(RI_EDGE,r.edge)||'not set'));
+    if(r.act)L.push('  Act: '+r.act);
+    if(r.letter)L.push('  Letter back: '+r.letter);
+    return L.join('\n');
+  }).join('\n\n');
+}
+function riRaw(all){
+  return all.map(function(x){var e=x.e;
+    return [x.d.toISOString().slice(0,10),riPath(e),(e.items||[]).join(', ')||'—',RI_ZLAB[e.zpd]||'—',RI_TLAB[e.direction]||'—',RI_XLAB[e.exchange]||'—',(e.timeMins||0)+'m',e.note?'note: '+String(e.note).replace(/\s+/g,' '):''].filter(Boolean).join(' | ');
+  }).join('\n');
+}
+window.generateRitesOracle=function(){
+  var now=new Date(), all=riAll(), rites=riLoad(), dig=riDigest(all), door=riDoor();
+  var mins=all.reduce(function(a,x){return a+(x.e.timeMins||0);},0);
+  var sky=[];
+  try{var mp=getMoonPhase();sky.push(mp.name+' ('+mp.illum+'% lit)'+(function(){try{return ' in '+getMoonSign().sign;}catch(e){return '';}})());}catch(e){}
+  try{var se=srSeason();sky.push(se.name+' ('+se.language+')');}catch(e){}
+  try{sky.push(personalYearLabel(now));}catch(e){}
+  var digest=dig.map(function(o){
+    return o.k+' | '+riFmt(o.first)+' → '+riFmt(o.last)+' · '+o.n+'× · '+(Math.round(o.mins/6)/10)+'h | zones: '+riZonePath(o.z)+(o.firstFlow?' (first In Flow '+riFmt(o.firstFlow)+')':'')+' | tide: '+riSplit(o.t,RI_TLAB)+' | exchange: '+riSplit(o.ex,RI_XLAB);
+  }).join('\n');
+  var raw=document.getElementById('ri-raw').checked;
+  var prompt='PENGUIN RITES OF PASSAGE ORACULUM REQUEST\n'
+    +'You are the Penguin Oracle — Rites of Passage Oraculum. Read claude/rites-of-passage-oraculum.md (Part A) and claude/rites-of-passage-oraculum-penguin.md (Part B) with claude/penguin-hq-system-prompt.md. Open with the four questions (Part B).\n\n'
+    +'SPAN: '+(all.length?riFmt(all[0].d):'no check-ins yet')+' → '+riFmt(now)+' · '+all.length+' check-ins · '+Math.floor(mins/60)+'h '+(mins%60)+'m logged · age '+riAge(now)+'\n'
+    +'SKY & CYCLES: '+(sky.join(' · ')||'—')+'\n'
+    +'THIS MOON\'S DOOR: '+door.fam.n+' — '+door.q+'\n\n'
+    +'LIFETIME DIGEST (per item; hours = time logged on check-ins that included it):\n'+(digest||'—')+'\n\n'
+    +'THRESHOLD SIGNALS:\n'+riSignals(all,dig,now)+'\n\n'
+    +'RITES WALK ('+rites.length+' entr'+(rites.length!==1?'ies':'y')+', newest first):\n'+riRitesBlock(rites)+'\n\n'
+    +(raw?'RAW CHECK-INS (oldest first):\n'+(riRaw(all)||'—')+'\n\n':'')
+    +'---\n'
+    +'ASK: Read the lifetime arc for rites, using the Part A reading format: the arc · crossed · in the threshold · unmarked · edge · dreaming · approaching · one rite to mark · next door · close.';
+  function show(){riToast('Rites Oracle copied — paste into Claude ✓');}
+  function fb(){var ta=document.createElement('textarea');ta.value=prompt;document.body.appendChild(ta);ta.select();try{document.execCommand('copy');}catch(e){}document.body.removeChild(ta);show();}
+  if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(prompt).then(show).catch(fb);} else fb();
 };
 })();
 </script>

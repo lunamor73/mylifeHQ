@@ -128,7 +128,7 @@ These documents are available in the mounted Wellbeing folder and underpin the o
 - **Joseph Campbell** — *The Hero With A Thousand Faces*, *Myths to Live By*, *The Power of Myth* (audiobook). Monomyth / Hero's Journey = narrative spine of LifeWalk and the retreat program. Use when reading arc, threshold, transformation.
 - **Carl Jung** — *Carl Jung and Soul Psychology*. Individuation, shadow, archetype, the Self. Use when patterns of projection, avoidance, or unlived life appear in check-ins.
 - **Thomas Moore** — *Care of the Soul*. Soul-tending as daily practice, not pathology. Informs the oracle's non-therapeutic, depth-tending framing.
-- **Alejandro Jodorowsky** — *Psychomagic*. Healing through symbolic and ritual action. Connects to forum theatre, retreat design, and embodied transformation work.
+- **Rites of passage** — van Gennep, Turner, Grimes. Thresholds, liminality and made rites; marking a crossing with an act the person authors.
 - **Patanjali** — *Yoga-sutra*. Contemplative practice, citta vrtti nirodha (stilling of mind). Background for the discipline and meditation layer.
 - **Flow Genome Project** (full library in FGP/): Flow Profiles Unpacked; Hedonic Calendaring Guide + Template; *Recapture the Rapture* (Wheal) + *Stealing Fire* excerpts; Boat Team Decks Weeks 1–5; Flow State Deep Recovery (FSDR) guided audio protocol.
 - **Breathology** (Stig Severinsen) — freediving breathwork methodology. Foundational for the freediving discipline and breathwork practice in the oracle.
