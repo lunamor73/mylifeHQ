@@ -708,7 +708,7 @@
 const S = {
   domain: null, lunadom: null,
   items: new Set(), lynStatus: null,
-  zpd: null, direction: null, exchange: null,
+  zpd: null, direction: null, exchange: null, project: null,
   timePads: new Set(), // set of pad values (in minutes)
   note: '',
   saved: false
@@ -750,7 +750,7 @@ function goToCheckin(domain, lunadom) {
   S.lunadom  = lunadom || null;
   S.items    = new Set();
   S.lynStatus = null;
-  S.zpd = null; S.direction = null; S.exchange = null;
+  S.zpd = null; S.direction = null; S.exchange = null; S.project = null;
   S.timePads = new Set();
   S.note = ''; S.saved = false;
 
@@ -1014,6 +1014,7 @@ function buildCheckin(key) {
     body.appendChild(wrap);
   });
 
+  if (typeof buildProjectPicker === 'function') addSec(body, 'Project', buildProjectPicker());
   addSec(body, 'Zone',      buildZPD());
   const tideCtxDiv = mk('div'); tideCtxDiv.className = 'tide-ctx'; tideCtxDiv.id = 'tide-ctx-checkin';
   tideCtxDiv.textContent = 'Loading tide & moon…';
@@ -1297,6 +1298,7 @@ function generatePrompt() {
   }
   if (S.direction) { const td = TIDES.find(t => t.id === S.direction); lines.push(`Feeling Tide: ${td ? td.label + ' — ' + td.sub : S.direction}`); }
   if (S.exchange)  lines.push(`Exchange: ${S.exchange}`);
+  if (S.project)   lines.push(`Project: ${S.project}`);
   lines.push(`Time: ${fmtTime()}`);
   if (S.note) lines.push('', `Note: ${S.note}`);
   lines.push('', '---', 'Penguin HQ check-in. Ready for Claude.');
@@ -1399,7 +1401,7 @@ function showConf(msg) {
 // ─── RESET ───
 function resetAll() {
   S.domain = null; S.lunadom = null; S.items = new Set();
-  S.lynStatus = null; S.zpd = null; S.direction = null; S.exchange = null;
+  S.lynStatus = null; S.zpd = null; S.direction = null; S.exchange = null; S.project = null;
   S.timePads = new Set(); S.note = ''; S.saved = false; S.savedId = null;
   nav('p1');
 }
@@ -1416,7 +1418,7 @@ function saveCheckIn(promptText) {
     id: Date.now(), ts: new Date().toISOString(),
     domain: S.domain, lunadom: S.lunadom,
     items: [...S.items], lynStatus: S.lynStatus,
-    zpd: S.zpd, direction: S.direction, exchange: S.exchange,
+    zpd: S.zpd, direction: S.direction, exchange: S.exchange, project: S.project || null,
     timeMins: totalMins(), note: S.note, prompt: promptText
   };
   const hist = getHistory();
@@ -1484,7 +1486,7 @@ function buildHistoryPage() {
 
     const domain = mk('div'); domain.className = 'hist-domain'; domain.textContent = entryDomainLabel(entry);
     const items  = mk('div'); items.className  = 'hist-items';
-    items.textContent = entry.items && entry.items.length ? entry.items.join(' · ') : (entry.lynStatus ? `Lyn: ${entry.lynStatus}` : 'No focus items');
+    items.textContent = (entry.items && entry.items.length ? entry.items.join(' · ') : (entry.lynStatus ? `Lyn: ${entry.lynStatus}` : 'No focus items')) + (entry.project ? ' — ' + entry.project : '');
 
     hdr.appendChild(row1); hdr.appendChild(domain); hdr.appendChild(items);
 
@@ -2131,6 +2133,7 @@ function generateOraclePrompt() {
       }
       if (e.direction) { const td = TIDES.find(t => t.id === e.direction); lines.push(`  Feeling Tide: ${td ? td.label : e.direction}`); }
       if (e.exchange)  lines.push(`  Exchange: ${e.exchange}`);
+      if (e.project)   lines.push(`  Project: ${e.project}`);
       if (e.timeMins)  lines.push(`  Time: ${e.timeMins >= 60 ? Math.floor(e.timeMins/60)+'h '+(e.timeMins%60||'')+'m' : e.timeMins+'m'}`.replace('0m','').trim());
       if (e.note)      lines.push(`  Note: ${e.note}`);
     });
@@ -2179,12 +2182,14 @@ function generateWeeklyPrompt() {
       if (e.zpd) { const zl = {flow:'In Flow', stretching:'Stretching', support:'With Support'}; lines.push(`  Zone: ${zl[e.zpd] || e.zpd}`); }
       if (e.direction) { const td = TIDES.find(t => t.id === e.direction); lines.push(`  Feeling Tide: ${td ? td.label : e.direction}`); }
       if (e.exchange)  lines.push(`  Exchange: ${e.exchange}`);
+      if (e.project)   lines.push(`  Project: ${e.project}`);
       if (e.timeMins)  lines.push(`  Time: ${e.timeMins >= 60 ? Math.floor(e.timeMins/60)+'h '+(e.timeMins%60||'')+'m' : e.timeMins+'m'}`.replace('0m','').trim());
       if (e.note)      lines.push(`  Note: ${e.note}`);
     });
   }
 
   lines.push('');
+  if (typeof projectThreadsText === 'function') { const pt = projectThreadsText(week); if (pt) { lines.push(pt.trim()); lines.push(''); } }
   lines.push('---');
   lines.push('Weekly oracle synthesis: Looking across all 7 days of check-ins, what are the dominant patterns? Which domains got attention, which were neglected? What does the arc of the week reveal about where I am right now? Cross-reference oracle systems. Flag what is alive, what is asking to be seen, and one key thing to carry into next week.');
 
@@ -2259,6 +2264,7 @@ function generatePenguinHQPrompt() {
       if (e.zpd)      lines.push(`  Zone: ${zoneMap[e.zpd] || e.zpd}`);
       if (e.direction) { const td = TIDES.find(t => t.id === e.direction); lines.push(`  Feeling Tide: ${td ? td.label : e.direction}`); }
       if (e.exchange) lines.push(`  Exchange: ${e.exchange}`);
+      if (e.project) lines.push(`  Project: ${e.project}`);
       if (e.timeMins) {
         const t = e.timeMins >= 60
           ? `${Math.floor(e.timeMins/60)}h ${e.timeMins%60 ? (e.timeMins%60)+'m' : ''}`.trim()
@@ -3525,7 +3531,7 @@ function setSyncState(state, email) {
 const HIST_KEY  = 'phq-history';
 const ARCH_KEY  = 'phq-insight-archive';
 const TOMB_KEY  = 'phq-deleted-ts';
-const SYNC_KEYS = [HIST_KEY, ARCH_KEY];
+const SYNC_KEYS = [HIST_KEY, ARCH_KEY, 'phq-projects'];  // v3.32: project list (append-only log)
 let _syncing = false;
 let _setItemWrapped = false;
 let _fbOrigSet = null;
@@ -4052,7 +4058,7 @@ function generateSeasonOracle(){
   var lines=entries.slice(0,12).map(function(e){
     var d=new Date(e.ts);
     var ds=d.toLocaleDateString('en-AU',{weekday:'long',day:'numeric',month:'long'});
-    var l='['+ds+'] '+(e.domain||'')+(e.lunadom?' › '+e.lunadom:'')+' · '+(e.zpd||'')+' · '+(e.direction||'')+' · '+(e.exchange||'');
+    var l='['+ds+'] '+(e.domain||'')+(e.lunadom?' › '+e.lunadom:'')+' · '+(e.zpd||'')+' · '+(e.direction||'')+' · '+(e.exchange||'')+(e.project?' · project: '+e.project:'');
     if(e.items&&e.items.length) l+='\n  Touched: '+(e.items||[]).join(', ');
     if(e.note) l+='\n  Note: '+e.note;
     return l;
@@ -4068,7 +4074,7 @@ function generateSeasonOracle(){
     +'- Cancer Sun 19° · Capricorn Rising · Sagittarius Moon 14°\n'
     +'- HD: Manifesting Generator 5/2 · Emotional Authority · Channels 53-42 / 32-54 / 63-4\n'
     +'- Mayan: White Rhythmic Dog (Kin 6) · Flow Goer + Deep Thinker\n'
-    +'- Life Path 30/3 · Personal Year 1 (seeds — shifts 12 Jul 2026)\n\n'
+    +'- Life Path 30/3 · '+(typeof personalYearLabel==='function'?personalYearLabel(new Date()):'')+'\n\n'
     +mapRef+'\n'
     +'AT ZENITH & RISING this month (active):\n'+(litLines.length?litLines.join('\n'):'  No check-ins this month yet')+'\n\n'
     +'BELOW THE HORIZON this month (yet to rise):\n'+(darkLines.length?darkLines.join('\n'):'  All areas visited — the whole sky overhead')+'\n\n'
@@ -4076,6 +4082,7 @@ function generateSeasonOracle(){
     +'Zones: '+srCount(entries,'zpd').map(function(p){return p[0]+' ('+p[1]+')';}).join(' · ')+'\n'
     +'Tides: '+srCount(entries,'direction').map(function(p){return p[0]+' ('+p[1]+')';}).join(' · ')+'\n'
     +'Exchange: '+srCount(entries,'exchange').map(function(p){return p[0]+' ('+p[1]+')';}).join(' · ')+'\n\n'
+    +(typeof projectThreadsText==='function'?projectThreadsText(entries):'')
     +'RECENT CHECK-INS:\n'+(lines||'None logged yet.')+'\n\n'
     +'---\n'
     +'You are the Penguin Oracle.\n\n'
@@ -4256,6 +4263,7 @@ window.generateOraclePrepPrompt = function(rangeArg, toastId){
       if(e.zpd) lines.push('  Zone: '+(zl[e.zpd]||e.zpd));
       if(e.direction) lines.push('  Feeling Tide: '+e.direction);
       if(e.exchange) lines.push('  Exchange: '+e.exchange);
+      if(e.project) lines.push('  Project: '+e.project);
       if(e.timeMins) lines.push('  Time: '+e.timeMins+'m');
       if(e.note) lines.push('  Note: '+e.note);
     });
@@ -6487,6 +6495,7 @@ window.generateSolarOracle=function(){
     +'THE YEAR SO FAR ('+entries.length+' check-ins · '+Math.floor(tm/60)+'h '+(tm%60)+'m logged):\n\n'
     +'SEASON BY SEASON:\n'+seasonBlocks+'\n\n'
     +'MOST LIVED (whole year): '+(top10||'—')+'\n\n'
+    +(typeof projectThreadsText==='function'?projectThreadsText(entries):'')
     +'EMERGED IN THE SECOND HALF (adaptations, new growth): '+(emerged.length?emerged.join(', '):'—')+'\n\n'
     +'GONE QUIET (active early, silent for 60+ days — possibly released): '+(released.length?released.join(', '):'—')+'\n\n'
     +'---\n'
@@ -6661,7 +6670,7 @@ window.riImport=function(input){
 };
 
 // ── the prompt ──
-function riPath(e){return [e.domain,e.lunadom].filter(function(v,i,a){return v&&a.indexOf(v)===i;}).join(' › ')||'—';}
+function riPath(e){try{if(typeof entryDomainLabel==='function')return entryDomainLabel(e);}catch(x){}return [e.domain,e.lunadom].filter(function(v,i,a){return v&&a.indexOf(v)===i;}).join(' › ')||'—';}
 function riDigest(all){
   var m={};
   all.forEach(function(x){
@@ -6699,7 +6708,7 @@ function riSignals(all,dig,now){
   var setg=dig.filter(function(o){return o.n>=10&&o.last<d60;}).map(function(o){return o.k+' ('+o.n+' check-ins, last '+riFmt(o.last)+')';});
   out.push('SETTING — 10+ check-ins, none in 60 days: '+(setg.join('; ')||'—'));
   var byDom={};
-  all.forEach(function(x){var k=x.e.lunadom||x.e.domain||'—';(byDom[k]=byDom[k]||[]).push(x);});
+  all.forEach(function(x){var k=riPath(x.e);(byDom[k]=byDom[k]||[]).push(x);});
   var arcs=[], inv=[];
   Object.keys(byDom).forEach(function(k){
     var L=byDom[k].filter(function(x){return x.e.direction;}), found=null;
@@ -6739,7 +6748,7 @@ function riRitesBlock(rites){
 }
 function riRaw(all){
   return all.map(function(x){var e=x.e;
-    return [x.d.toISOString().slice(0,10),riPath(e),(e.items||[]).join(', ')||'—',RI_ZLAB[e.zpd]||'—',RI_TLAB[e.direction]||'—',RI_XLAB[e.exchange]||'—',(e.timeMins||0)+'m',e.note?'note: '+String(e.note).replace(/\s+/g,' '):''].filter(Boolean).join(' | ');
+    return [x.d.toISOString().slice(0,10),riPath(e),(e.items||[]).join(', ')||'—',RI_ZLAB[e.zpd]||'—',RI_TLAB[e.direction]||'—',RI_XLAB[e.exchange]||'—',(e.timeMins||0)+'m',e.project?'project: '+e.project:'',e.note?'note: '+String(e.note).replace(/\s+/g,' '):''].filter(Boolean).join(' | ');
   }).join('\n');
 }
 window.generateRitesOracle=function(){
@@ -6760,6 +6769,7 @@ window.generateRitesOracle=function(){
     +'THIS MOON\'S DOOR: '+door.fam.n+' — '+door.q+'\n\n'
     +'LIFETIME DIGEST (per item; hours = time logged on check-ins that included it):\n'+(digest||'—')+'\n\n'
     +'THRESHOLD SIGNALS:\n'+riSignals(all,dig,now)+'\n\n'
+    +(typeof projectThreadsText==='function'?projectThreadsText(all.map(function(x){return x.e;}),'PROJECT THREADS (lifetime)'):'')
     +'RITES WALK ('+rites.length+' entr'+(rites.length!==1?'ies':'y')+', newest first):\n'+riRitesBlock(rites)+'\n\n'
     +(raw?'RAW CHECK-INS (oldest first):\n'+(riRaw(all)||'—')+'\n\n':'')
     +'---\n'
@@ -6821,6 +6831,131 @@ window.generateRitesOracle=function(){
     window.lhqAuth.signOut().then(function(){msg('Signed out. Everything stays on this device.');lhqRenderSync();});
   };
   try{lhqRenderSync();}catch(e){}
+})();
+</script>
+
+<script>
+// ══ PROJECTS — threads that run across domains (v3.32, 3 Nov 2026) ══════════
+// A check-in still lives in its domain (the kind of work). The project says what
+// the work was for, so the oracles can read a project as one whole across domains.
+// List = defaults + projects used in check-ins + the 'phq-projects' change log.
+// The log is append-only ({ts,name,active}) so it merges cleanly in cloud sync.
+(function(){
+var PROJ_KEY='phq-projects';
+var PROJ_DEFAULTS=['mylifeHQ','Album','Rusty Jangles','Booty Shaker'];
+function pjLog(){try{var a=JSON.parse(localStorage.getItem(PROJ_KEY)||'[]');return Array.isArray(a)?a.filter(function(x){return x&&x.ts&&x.name;}):[];}catch(e){return[];}}
+function pjAppend(name,active){
+  var log=pjLog(), ts=new Date().toISOString(), seen={};
+  log.forEach(function(x){seen[x.ts]=1;});
+  while(seen[ts])ts=new Date(Date.parse(ts)+1).toISOString();
+  log.push({ts:ts,name:name,active:active});
+  localStorage.setItem(PROJ_KEY,JSON.stringify(log));
+}
+function pjState(){
+  var st={};
+  function put(name,active,ts){
+    var k=String(name).trim().toLowerCase(); if(!k)return;
+    var cur=st[k];
+    if(!cur){st[k]={name:String(name).trim(),active:active,ts:ts,first:ts};return;}
+    if(ts>cur.ts){cur.name=String(name).trim();cur.active=active;cur.ts=ts;}
+    if(ts<cur.first)cur.first=ts;
+  }
+  PROJ_DEFAULTS.forEach(function(n,i){put(n,true,'0000-00-0'+i);});
+  try{(typeof srEntries==='function'?srEntries(0,0,true):[]).forEach(function(e){if(e&&e.project)put(e.project,true,'0000-01-01');});}catch(e){}
+  pjLog().forEach(function(x){put(x.name,!!x.active,x.ts);});
+  return Object.keys(st).map(function(k){return st[k];}).sort(function(a,b){return a.first<b.first?-1:a.first>b.first?1:0;});
+}
+window.phqProjects=function(){return pjState().filter(function(p){return p.active;}).map(function(p){return p.name;});};
+
+function el(tag,css,text){var e=document.createElement(tag);if(css)e.style.cssText=css;if(text!=null)e.textContent=text;return e;}
+var BTN='padding:8px 12px;border-radius:10px;border:1.5px solid var(--muted);background:transparent;color:var(--muted);font-size:12px;font-weight:600;cursor:pointer';
+var BTN_ON='padding:8px 12px;border-radius:10px;border:1.5px solid var(--gold);background:var(--gold-dim);color:var(--gold);font-size:12px;font-weight:700;cursor:pointer';
+
+window.buildProjectPicker=function(){
+  var wrap=el('div','display:flex;flex-direction:column;gap:8px');
+  var sel=el('select','width:100%;box-sizing:border-box;font-family:inherit;font-size:16px;color:var(--text,#111);background:var(--surface,#f2f2f2);border:1px solid var(--border,#d0d0d0);border-radius:12px;padding:11px 12px');
+  sel.className='pj-select'; sel.setAttribute('aria-label','Project');
+  var extra=el('div','display:flex;flex-direction:column;gap:8px');
+  function fill(){
+    var list=phqProjects();
+    sel.innerHTML='';
+    sel.add(new Option('No project',''));
+    list.forEach(function(p){sel.add(new Option(p,p));});
+    if(S.project&&list.indexOf(S.project)<0)sel.add(new Option(S.project,S.project));
+    sel.add(new Option('+ New project…','__new'));
+    sel.add(new Option('Manage projects…','__manage'));
+    sel.value=S.project||'';
+  }
+  function showNew(){
+    extra.innerHTML='';
+    var row=el('div','display:flex;gap:8px;flex-wrap:wrap;align-items:center');
+    var inp=el('input','flex:1;min-width:160px;box-sizing:border-box;font-family:inherit;font-size:16px;color:var(--text,#111);background:var(--surface,#f2f2f2);border:1px solid var(--border,#d0d0d0);border-radius:10px;padding:9px 12px');
+    inp.className='pj-new-name'; inp.placeholder='Project name'; inp.maxLength=40;
+    var add=el('button',BTN_ON,'Add'); add.className='pj-add';
+    var cancel=el('button',BTN,'Cancel');
+    var msg=el('div','font-size:12px;color:var(--amber,#a06010);min-height:14px');
+    add.onclick=function(){
+      var name=inp.value.replace(/\s+/g,' ').trim();
+      if(!name){msg.textContent='Give the project a name first.';return;}
+      var match=pjState().filter(function(p){return p.name.toLowerCase()===name.toLowerCase();})[0];
+      if(match){if(!match.active)pjAppend(match.name,true);S.project=match.name;}
+      else{pjAppend(name,true);S.project=name;}
+      extra.innerHTML='';fill();
+    };
+    inp.onkeydown=function(e){if(e.key==='Enter')add.onclick();};
+    cancel.onclick=function(){extra.innerHTML='';};
+    row.appendChild(inp);row.appendChild(add);row.appendChild(cancel);
+    extra.appendChild(row);extra.appendChild(msg);
+    setTimeout(function(){try{inp.focus();}catch(e){}},30);
+  }
+  function showManage(){
+    extra.innerHTML='';
+    var box=el('div','border:1px solid var(--border,#d0d0d0);border-radius:12px;padding:10px 12px;display:flex;flex-direction:column;gap:8px');
+    pjState().forEach(function(p){
+      var row=el('div','display:flex;align-items:center;gap:8px');
+      row.appendChild(el('div','flex:1;font-size:14px;'+(p.active?'color:var(--text,#111)':'color:var(--muted);text-decoration:line-through'),p.name));
+      var b=el('button',BTN,p.active?'Retire':'Restore');
+      b.className='pj-toggle';
+      b.onclick=function(){if(p.active&&S.project===p.name)S.project=null;pjAppend(p.name,!p.active);fill();showManage();};
+      row.appendChild(b);box.appendChild(row);
+    });
+    box.appendChild(el('div','font-size:12px;color:var(--muted);line-height:1.4','Retiring a project hides it from this list. Its check-ins keep their project.'));
+    var done=el('button',BTN_ON,'Done'); done.style.alignSelf='flex-start';
+    done.onclick=function(){extra.innerHTML='';};
+    box.appendChild(done);extra.appendChild(box);
+  }
+  sel.onchange=function(){
+    var v=sel.value;
+    if(v==='__new'){sel.value=S.project||'';showNew();return;}
+    if(v==='__manage'){sel.value=S.project||'';showManage();return;}
+    S.project=v||null;extra.innerHTML='';
+  };
+  fill();
+  wrap.appendChild(sel);wrap.appendChild(extra);
+  return wrap;
+};
+
+// Text block for the oracle prompts: each project read as one whole across domains.
+window.projectThreadsText=function(entries,title){
+  var by={};
+  (entries||[]).forEach(function(e){
+    if(!e||!e.project)return;
+    var o=by[e.project]||(by[e.project]={n:0,m:0,dom:{},first:null,last:null});
+    var d=new Date(e.ts), k;
+    try{k=(typeof entryDomainLabel==='function')?entryDomainLabel(e):(e.lunadom||e.domain||'—');}catch(x){k=e.lunadom||e.domain||'—';}
+    o.n++; o.m+=(e.timeMins||0); o.dom[k]=(o.dom[k]||0)+(e.timeMins||0);
+    if(!isNaN(d.getTime())){if(!o.first||d<o.first)o.first=d;if(!o.last||d>o.last)o.last=d;}
+  });
+  var names=Object.keys(by); if(!names.length)return '';
+  var h=function(m){return m>=60?(Math.round(m/6)/10)+'h':m+'m';};
+  var f=function(d){return d?d.getDate()+' '+['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][d.getMonth()]+' '+d.getFullYear():'—';};
+  var lines=names.sort(function(a,b){return (by[b].m-by[a].m)||(by[b].n-by[a].n);}).map(function(p){
+    var o=by[p];
+    var doms=Object.keys(o.dom).sort(function(a,b){return o.dom[b]-o.dom[a];}).map(function(k){return k+(o.dom[k]?' '+h(o.dom[k]):'');}).join(', ');
+    return p+' — '+o.n+' check-in'+(o.n!==1?'s':'')+' · '+h(o.m)+(doms?' · '+doms:'')+' · '+f(o.first)+' → '+f(o.last);
+  });
+  return (title||'PROJECTS')+' (threads that run across domains; read each as one whole):\n'+lines.join('\n')+'\n\n';
+};
 })();
 </script>
 </body>
