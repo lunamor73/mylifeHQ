@@ -2071,7 +2071,7 @@ function calcPersonalYear(date) {
   const yearForCalc = (m > bMonth || (m === bMonth && d >= bDay)) ? y : y - 1;
   const sum = bMonth + bDay + [...String(yearForCalc)].reduce((a, c) => a + parseInt(c), 0);
   let n = sum;
-  while (n > 9 && n !== 11 && n !== 22) n = [...String(n)].reduce((a, c) => a + parseInt(c), 0);
+  while (n > 9) n = [...String(n)].reduce((a, c) => a + parseInt(c), 0);  // Millman: 1–9, no master years
   return n;
 }
 function personalYearLabel(date) {
@@ -2079,21 +2079,20 @@ function personalYearLabel(date) {
   const bMonth = 7, bDay = 12;
   const m = date.getMonth() + 1, d = date.getDate();
   const post = (m > bMonth || (m === bMonth && d >= bDay));
+  // Dan Millman's nine-year cycle (peacefulwarrior.com is the source of truth)
   const themes = {
-    1:'New beginnings · seeds · self re-emerges',
-    2:'Cooperation · tending · receiving · root year',
-    3:'Expression · creativity · voice',
-    4:'Structure · foundations · long build',
-    5:'Change · freedom · movement',
-    6:'Responsibility · family · service',
-    7:'Reflection · study · inner work',
-    8:'Authority · power · material world',
-    9:'Completion · release · endings as gifts',
-    11:'Master Year 11 — Illumination · intuition · higher purpose',
-    22:'Master Year 22 — Master Builder · vision made material'
+    1:'Creativity & Security · seeds, new beginnings',
+    2:'Cooperation through Balance · the seed needs the help of others',
+    3:'Expression & Sensitivity · creativity emerges publicly',
+    4:'Stability & Process · roots deepen',
+    5:'Freedom & Discipline · growth accelerates',
+    6:'Vision & Acceptance · flowering',
+    7:'Trust & Openness · ripening, inner work',
+    8:'Influence & Abundance · harvest',
+    9:'Integrity & Wisdom · completion, release'
   };
   const status = post ? 'active from 12 Jul' : 'pre-birthday — shifts 12 Jul';
-  return `Personal Year ${py} (${themes[py] || ''}) [${status}]`;
+  return `Millman Year ${py}: ${themes[py] || ''} [${status}]`;
 }
 
 // ─── ORACLE INSIGHT PROMPT ───
