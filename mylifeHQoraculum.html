@@ -680,7 +680,7 @@
   <div class="top-bar">
     <button class="back-btn" onclick="nav('p1')">← Back</button>
     <div class="bar-title">History</div>
-    <div style="width:60px"></div>
+    <button class="back-btn pj-hist-btn" onclick="phqOpenTagger({onClose:function(){try{buildHistoryPage();}catch(e){}}})">Projects</button>
   </div>
   <div id="hist-body" class="hist-body"></div>
 </div>
@@ -1410,7 +1410,7 @@ function resetAll() {
 const HIST_KEY = 'phq-history';
 
 function getHistory() {
-  try { return JSON.parse(localStorage.getItem(HIST_KEY) || '[]'); } catch { return []; }
+  try { const h = JSON.parse(localStorage.getItem(HIST_KEY) || '[]'); return typeof phqTagged === 'function' ? phqTagged(h) : h; } catch { return []; }
 }
 
 function saveCheckIn(promptText) {
@@ -3531,7 +3531,7 @@ function setSyncState(state, email) {
 const HIST_KEY  = 'phq-history';
 const ARCH_KEY  = 'phq-insight-archive';
 const TOMB_KEY  = 'phq-deleted-ts';
-const SYNC_KEYS = [HIST_KEY, ARCH_KEY, 'phq-projects'];  // v3.32: project list (append-only log)
+const SYNC_KEYS = [HIST_KEY, ARCH_KEY, 'phq-projects', 'phq-project-tags'];  // v3.32–3.33: project list + tags (append-only logs)
 let _syncing = false;
 let _setItemWrapped = false;
 let _fbOrigSet = null;
@@ -3818,6 +3818,7 @@ function srEntries(year, month, allMode) {
   var hist=[], arch=[];
   try{ hist = JSON.parse(localStorage.getItem('phq-history')||'[]'); }catch(e){}
   try{ arch = JSON.parse(localStorage.getItem('phq-insight-archive')||'[]'); }catch(e){}
+  if(typeof phqTagged==='function'){phqTagged(hist);phqTagged(arch);}
   var seen = {};
   return [].concat(hist, arch).filter(function(e){
     if(!e||!e.ts) return false;
@@ -4134,6 +4135,7 @@ function opAllEntries(){
   var hist=[], arch=[];
   try{ hist=JSON.parse(localStorage.getItem('phq-history')||'[]'); }catch(e){}
   try{ arch=JSON.parse(localStorage.getItem('phq-insight-archive')||'[]'); }catch(e){}
+  if(typeof phqTagged==='function'){phqTagged(hist);phqTagged(arch);}
   var seen={};
   return [].concat(hist,arch).filter(function(e){
     if(!e||!e.ts||e.ts===9999999999999) return false;
@@ -4341,6 +4343,7 @@ function getAllEntries(){
   var hist=[], arch=[];
   try{ hist=JSON.parse(localStorage.getItem('phq-history')||'[]'); }catch(e){}
   try{ arch=JSON.parse(localStorage.getItem('phq-insight-archive')||'[]'); }catch(e){}
+  if(typeof phqTagged==='function'){phqTagged(hist);phqTagged(arch);}
   var seen={};
   return [].concat(hist,arch).filter(function(e){
     if(!e||!e.ts||e.ts===9999999999999) return false;
@@ -5020,6 +5023,7 @@ function smResize(){
   smCv.width=Math.round(_smW*smDpr);
   smCv.height=Math.round(_smH*smDpr);
 }
+var smThreads=[];  // v3.33 project threads
 function smBuildEdgeGroups(){
   var idx={}; smEdgeGroups=[];
   edges.forEach(function(ed){
@@ -5054,6 +5058,7 @@ function drawEdges(){
     }
     smCtx.stroke();
   }
+  if(typeof phqDrawThreads==='function') phqDrawThreads(smCtx,smThreads,W/Math.max(1,_smW),function(n){return [n.x,n.y,(n._sprBox||0)*(n._sc||0)/2];});
   // struck strands last, so they sit on top
   if(hot.length){
     smCtx.strokeStyle='#b8920f';
@@ -5462,6 +5467,8 @@ window.openStarMap = function(){
     smResize();
     buildGraph();
     buildDOM();
+    smThreads=(typeof phqThreads==='function')?phqThreads(nodes,getAllEntries()):[];
+    if(typeof phqThreadBar==='function') phqThreadBar(document.querySelector('#p10 .sm-body'),smThreads,function(r){ if(r==='rebuild') window.openStarMap(); });
     focusNode=null; focusOn=false; fMix=0; VIEW.w=3900; VIEW.tw=3900; alpha=1; spinV=0;
     render();   // first frame synchronously — don't wait on rAF
     smPhase=''; bloomCycle(performance.now()); smCaption();
@@ -5679,6 +5686,7 @@ function getAllEntries(){
   var hist=[], arch=[];
   try{ hist=JSON.parse(localStorage.getItem('phq-history')||'[]'); }catch(e){}
   try{ arch=JSON.parse(localStorage.getItem('phq-insight-archive')||'[]'); }catch(e){}
+  if(typeof phqTagged==='function'){phqTagged(hist);phqTagged(arch);}
   var seen={};
   return [].concat(hist,arch).filter(function(e){
     if(!e||!e.ts||e.ts===9999999999999) return false;
@@ -6010,6 +6018,7 @@ function silkResize(){
   wbCv.width=Math.round(_cvW*wbDpr);
   wbCv.height=Math.round(_cvH*wbDpr);
 }
+var wbThreads=[];  // v3.33 project threads
 function drawSilk(){
   if(!wbCtx) return;
   var t=performance.now();
@@ -6034,6 +6043,7 @@ function drawSilk(){
     }
     wbCtx.stroke();
   }
+  if(typeof phqDrawThreads==='function') phqDrawThreads(wbCtx,wbThreads,W/Math.max(1,_cvW),function(n){return [n._tx,n._ty,(n._sprBox||0)/2];});
   if(wAnchors.length){
     wbCtx.strokeStyle='#b9b0a0';
     wbCtx.globalAlpha=0.42;
@@ -6344,6 +6354,8 @@ window.openWeb = function(){
     silkResize();
     layout();
     buildDOM();
+    wbThreads=(typeof phqThreads==='function')?phqThreads(nodes,getAllEntries()):[];
+    if(typeof phqThreadBar==='function') phqThreadBar(document.querySelector('#p11 .wb-body'),wbThreads,function(r){ if(r==='rebuild') window.openWeb(); else requestView(); });
     VIEW={x:0,y:0,w:2100};
     applyView();
     if(!_wired){
@@ -6834,105 +6846,388 @@ window.generateRitesOracle=function(){
 })();
 </script>
 
+<style>
+.pj-tabs{display:flex;flex-wrap:wrap;gap:8px}
+.pj-tab{padding:9px 14px;border-radius:999px;border:2px solid var(--border);background:var(--surface);color:var(--muted);font-family:inherit;font-size:13px;font-weight:700;letter-spacing:.3px;line-height:1.2;cursor:pointer;transition:all .15s;display:inline-flex;align-items:center;gap:7px}
+.pj-tab:active{transform:scale(.96)}
+.pj-tab.sel{border-color:var(--gold);background:var(--gold-dim);color:var(--gold)}
+.pj-tab.quiet{background:transparent;border-style:dashed}
+.pj-dot{width:9px;height:9px;border-radius:50%;flex:none;display:inline-block}
+.pj-btn{padding:8px 12px;border-radius:10px;border:1.5px solid var(--muted);background:transparent;color:var(--muted);font-family:inherit;font-size:12px;font-weight:600;cursor:pointer}
+.pj-btn.on{border-color:var(--gold);background:var(--gold-dim);color:var(--gold);font-weight:700}
+.pj-btn:disabled{opacity:.4;cursor:default}
+.pj-input{flex:1;min-width:150px;box-sizing:border-box;font-family:inherit;font-size:16px;color:var(--text);background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:9px 12px}
+.pj-box{border:1px solid var(--border);border-radius:12px;padding:10px 12px;display:flex;flex-direction:column;gap:8px}
+.pj-small{font-size:12px;color:var(--muted);line-height:1.4}
+#pj-tagger{position:fixed;inset:0;z-index:1000;background:var(--bg);display:flex;flex-direction:column}
+#pj-tagger .pt-top{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:10px 14px;border-bottom:1px solid var(--border)}
+#pj-tagger .pt-title{font-size:13px;font-weight:700;letter-spacing:.2em;text-transform:uppercase;color:var(--muted)}
+#pj-tagger .pt-body{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:14px 14px 28px}
+#pj-tagger .pt-sec{font-size:11px;font-weight:700;letter-spacing:.2em;text-transform:uppercase;color:var(--muted);margin:16px 0 8px}
+#pj-tagger .pt-sum{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:12px 0 4px}
+#pj-tagger .pt-row{display:flex;gap:10px;align-items:flex-start;padding:11px 2px;border-bottom:1px solid var(--surface);cursor:pointer}
+#pj-tagger .pt-row input{width:20px;height:20px;margin:1px 0 0;accent-color:#b8920f;flex:none}
+#pj-tagger .pt-meta{font-size:12px;color:var(--muted);display:flex;flex-wrap:wrap;align-items:center;gap:6px}
+#pj-tagger .pt-items{font-size:14px;color:var(--text);margin-top:3px}
+#pj-tagger .pt-note{font-size:12px;color:var(--muted);margin-top:3px;line-height:1.35}
+#pj-tagger .pt-why{font-size:11px;color:var(--gold);margin-top:3px}
+#pj-tagger .pt-badge{display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:700;color:var(--text);background:var(--surface);border-radius:999px;padding:2px 8px}
+#pj-tagger .pt-msg{font-size:13px;color:var(--green);min-height:18px;margin-top:10px}
+#pj-tagger .pt-bar{display:flex;gap:8px;align-items:center;padding:10px 14px calc(10px + env(safe-area-inset-bottom));border-top:1px solid var(--border);background:var(--bg)}
+#pj-tagger .pt-apply{flex:1;padding:13px 12px;border-radius:12px;border:2px solid var(--gold);background:var(--gold);color:#fff;font-family:inherit;font-size:14px;font-weight:700;cursor:pointer}
+#pj-tagger .pt-apply:disabled{opacity:.35;cursor:default}
+.pj-threads{position:absolute;top:50px;left:14px;right:14px;z-index:6;display:flex;flex-direction:column;align-items:flex-start;gap:6px;pointer-events:none}
+.pj-trow{display:flex;gap:6px;max-width:100%;overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none;pointer-events:auto;padding:2px 2px 4px}
+.pj-trow::-webkit-scrollbar{display:none}
+.pj-chip{flex:none;display:inline-flex;align-items:center;gap:6px;background:#fff;border:1.5px solid var(--border);border-radius:20px;padding:5px 11px;font-family:inherit;font-size:11px;letter-spacing:.06em;color:var(--muted);cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,.06)}
+.pj-chip.sel{font-weight:700}
+.pj-cap{background:rgba(255,255,255,.94);border-radius:10px;padding:6px 10px;font-size:12px;line-height:1.4;color:var(--text);box-shadow:0 2px 8px rgba(0,0,0,.06)}
+</style>
 <script>
-// ══ PROJECTS — threads that run across domains (v3.32, 3 Nov 2026) ══════════
+// ══ PROJECTS — threads that run across domains (v3.32–3.33, 3 Nov 2026) ═════
 // A check-in still lives in its domain (the kind of work). The project says what
-// the work was for, so the oracles can read a project as one whole across domains.
-// List = defaults + projects used in check-ins + the 'phq-projects' change log.
-// The log is append-only ({ts,name,active}) so it merges cleanly in cloud sync.
+// the work was for, so the oracles, Arakna and The Bloom can read a project as
+// one whole across domains. Both stores are append-only logs, so they merge
+// cleanly in private sync (latest change wins):
+//   phq-projects      {ts,name,active}  the project list
+//   phq-project-tags  {ts,at,project}   project set on an earlier check-in (at = its ts)
 (function(){
-var PROJ_KEY='phq-projects';
+var PROJ_KEY='phq-projects', TAG_KEY='phq-project-tags';
 var PROJ_DEFAULTS=['mylifeHQ','Album','Rusty Jangles','Booty Shaker'];
-function pjLog(){try{var a=JSON.parse(localStorage.getItem(PROJ_KEY)||'[]');return Array.isArray(a)?a.filter(function(x){return x&&x.ts&&x.name;}):[];}catch(e){return[];}}
-function pjAppend(name,active){
-  var log=pjLog(), ts=new Date().toISOString(), seen={};
-  log.forEach(function(x){seen[x.ts]=1;});
-  while(seen[ts])ts=new Date(Date.parse(ts)+1).toISOString();
-  log.push({ts:ts,name:name,active:active});
-  localStorage.setItem(PROJ_KEY,JSON.stringify(log));
+var PALETTE=['#d1495b','#2e86de','#3aa655','#e05fb0','#1aa7b8','#7a5cd6','#e3a21a','#5d6d7e'];
+var MONTHS=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+var WDAYS=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+// words that suggest a check-in belongs to a project (reviewed before tagging)
+var ALIASES={'mylifehq':['mylife','oraculum','penguin hq','vibe coding','vibe code','coding','app'],
+  'rusty jangles':['rusty','jangles'],'booty shaker':['booty','bootyshaker']};
+var ITEM_HINTS={'mylifehq':[['lunaama','Systems & tools setup']]};
+
+function readArr(k){try{var a=JSON.parse(localStorage.getItem(k)||'[]');return Array.isArray(a)?a:[];}catch(e){return[];}}
+function freshTs(log,n){
+  var seen={},out=[],t=Date.now();
+  log.forEach(function(x){if(x&&x.ts)seen[x.ts]=1;});
+  while(out.length<n){var s=new Date(t).toISOString();if(!seen[s]){seen[s]=1;out.push(s);}t++;}
+  return out;
 }
+function el(tag,cls,text){var e=document.createElement(tag);if(cls)e.className=cls;if(text!=null)e.textContent=text;return e;}
+function btn(cls,text,fn){var b=el('button',cls,text);b.type='button';if(fn)b.onclick=fn;return b;}
+function dot(color){var d=el('span','pj-dot');d.style.background=color;return d;}
+function entryKey(e){return (!e||e.ts==null)?'':(typeof e.ts==='number'?new Date(e.ts).toISOString():String(e.ts));}
+function fmtDate(d){return WDAYS[d.getDay()]+' '+d.getDate()+' '+MONTHS[d.getMonth()]+' '+d.getFullYear();}
+function hrs(m){return m>=60?(Math.round(m/6)/10)+'h':(m||0)+'m';}
+function domLabel(e){try{if(typeof entryDomainLabel==='function')return entryDomainLabel(e);}catch(x){}return e.lunadom||e.domain||'—';}
+function allEntries(){try{return typeof srEntries==='function'?srEntries(0,0,true):[];}catch(e){return[];}}
+
+// ── tags on earlier check-ins ────────────────────────────────────────────────
+var _tagRaw=null,_tagMap={},_tagN=0;
+function tagMap(){
+  var raw=localStorage.getItem(TAG_KEY)||'[]';
+  if(raw===_tagRaw)return _tagMap;
+  var m={},n=0,log=[];try{log=JSON.parse(raw);}catch(e){}
+  (Array.isArray(log)?log:[]).forEach(function(x){
+    if(!x||!x.ts||!x.at)return;
+    var c=m[x.at];if(!c){n++;}
+    if(!c||x.ts>c.ts)m[x.at]={ts:x.ts,project:x.project||''};
+  });
+  _tagRaw=raw;_tagMap=m;_tagN=n;return m;
+}
+// overlay: every reader of check-ins calls this, so a tag shows everywhere
+window.phqTagged=function(list){
+  if(!Array.isArray(list)||!list.length)return list;
+  var m=tagMap();if(!_tagN)return list;
+  list.forEach(function(e){if(e&&typeof e==='object'){var t=m[entryKey(e)];if(t)e.project=t.project||null;}});
+  return list;
+};
+function tagEntries(keys,project){
+  if(!keys.length)return;
+  var log=readArr(TAG_KEY),ts=freshTs(log,keys.length);
+  keys.forEach(function(k,i){log.push({ts:ts[i],at:k,project:project||''});});
+  localStorage.setItem(TAG_KEY,JSON.stringify(log));
+}
+
+// ── the project list ─────────────────────────────────────────────────────────
+function pjLog(){return readArr(PROJ_KEY).filter(function(x){return x&&x.ts&&x.name;});}
+function pjAppend(name,active){var log=readArr(PROJ_KEY);log.push({ts:freshTs(log,1)[0],name:name,active:active});localStorage.setItem(PROJ_KEY,JSON.stringify(log));}
 function pjState(){
-  var st={};
-  function put(name,active,ts){
-    var k=String(name).trim().toLowerCase(); if(!k)return;
-    var cur=st[k];
-    if(!cur){st[k]={name:String(name).trim(),active:active,ts:ts,first:ts};return;}
-    if(ts>cur.ts){cur.name=String(name).trim();cur.active=active;cur.ts=ts;}
-    if(ts<cur.first)cur.first=ts;
+  var st={},order=[];
+  function put(name,active,ts,born){
+    var nm=String(name).trim(),k=nm.toLowerCase();if(!k)return;
+    var c=st[k];
+    if(!c){c=st[k]={name:nm,active:active,ts:ts,born:born||null};order.push(k);}
+    else if(ts>c.ts){c.name=nm;c.active=active;c.ts=ts;}
+    if(born&&(!c.born||born<c.born))c.born=born;
   }
-  PROJ_DEFAULTS.forEach(function(n,i){put(n,true,'0000-00-0'+i);});
-  try{(typeof srEntries==='function'?srEntries(0,0,true):[]).forEach(function(e){if(e&&e.project)put(e.project,true,'0000-01-01');});}catch(e){}
-  pjLog().forEach(function(x){put(x.name,!!x.active,x.ts);});
-  return Object.keys(st).map(function(k){return st[k];}).sort(function(a,b){return a.first<b.first?-1:a.first>b.first?1:0;});
+  PROJ_DEFAULTS.forEach(function(n,i){put(n,true,'0000-00-0'+i,'0000-00-0'+i);});
+  allEntries().forEach(function(e){if(e&&e.project)put(e.project,true,'0000-01-01',null);});
+  pjLog().forEach(function(x){put(x.name,!!x.active,x.ts,x.ts);});
+  // order (and so colour) = defaults, then the order projects were made
+  return order.map(function(k){return st[k];}).sort(function(a,b){
+    var A=a.born||('9999'+a.name.toLowerCase()),B=b.born||('9999'+b.name.toLowerCase());return A<B?-1:A>B?1:0;});
 }
+function colorMap(){var m={};pjState().forEach(function(p,i){m[p.name.toLowerCase()]=PALETTE[i%PALETTE.length];});return m;}
 window.phqProjects=function(){return pjState().filter(function(p){return p.active;}).map(function(p){return p.name;});};
+window.phqProjectColor=function(name){return colorMap()[String(name||'').trim().toLowerCase()]||'#5d6d7e';};
+// add (or bring back) a project; returns its name as stored
+function addProject(name){
+  var match=pjState().filter(function(p){return p.name.toLowerCase()===name.toLowerCase();})[0];
+  if(match){if(!match.active)pjAppend(match.name,true);return match.name;}
+  pjAppend(name,true);return name;
+}
+function newProjectRow(host,onAdded,onCancel){
+  host.innerHTML='';
+  var row=el('div');row.style.cssText='display:flex;gap:8px;flex-wrap:wrap;align-items:center';
+  var inp=el('input','pj-input pj-new-name');inp.placeholder='Project name';inp.maxLength=40;
+  var msg=el('div','pj-small');msg.style.minHeight='14px';
+  var add=btn('pj-btn on pj-add','Add',function(){
+    var name=inp.value.replace(/\s+/g,' ').trim();
+    if(!name){msg.textContent='Give the project a name first.';return;}
+    host.innerHTML='';onAdded(addProject(name));
+  });
+  inp.onkeydown=function(e){if(e.key==='Enter')add.onclick();};
+  row.appendChild(inp);row.appendChild(add);row.appendChild(btn('pj-btn','Cancel',function(){host.innerHTML='';if(onCancel)onCancel();}));
+  host.appendChild(row);host.appendChild(msg);
+  setTimeout(function(){try{inp.focus();}catch(e){}},30);
+}
 
-function el(tag,css,text){var e=document.createElement(tag);if(css)e.style.cssText=css;if(text!=null)e.textContent=text;return e;}
-var BTN='padding:8px 12px;border-radius:10px;border:1.5px solid var(--muted);background:transparent;color:var(--muted);font-size:12px;font-weight:600;cursor:pointer';
-var BTN_ON='padding:8px 12px;border-radius:10px;border:1.5px solid var(--gold);background:var(--gold-dim);color:var(--gold);font-size:12px;font-weight:700;cursor:pointer';
-
+// ── check-in screen: project tabs ────────────────────────────────────────────
 window.buildProjectPicker=function(){
-  var wrap=el('div','display:flex;flex-direction:column;gap:8px');
-  var sel=el('select','width:100%;box-sizing:border-box;font-family:inherit;font-size:16px;color:var(--text,#111);background:var(--surface,#f2f2f2);border:1px solid var(--border,#d0d0d0);border-radius:12px;padding:11px 12px');
-  sel.className='pj-select'; sel.setAttribute('aria-label','Project');
-  var extra=el('div','display:flex;flex-direction:column;gap:8px');
+  var wrap=el('div');wrap.style.cssText='display:flex;flex-direction:column;gap:10px';
+  var row=el('div','pj-tabs'),extra=el('div');extra.style.cssText='display:flex;flex-direction:column;gap:8px';
   function fill(){
-    var list=phqProjects();
-    sel.innerHTML='';
-    sel.add(new Option('No project',''));
-    list.forEach(function(p){sel.add(new Option(p,p));});
-    if(S.project&&list.indexOf(S.project)<0)sel.add(new Option(S.project,S.project));
-    sel.add(new Option('+ New project…','__new'));
-    sel.add(new Option('Manage projects…','__manage'));
-    sel.value=S.project||'';
-  }
-  function showNew(){
-    extra.innerHTML='';
-    var row=el('div','display:flex;gap:8px;flex-wrap:wrap;align-items:center');
-    var inp=el('input','flex:1;min-width:160px;box-sizing:border-box;font-family:inherit;font-size:16px;color:var(--text,#111);background:var(--surface,#f2f2f2);border:1px solid var(--border,#d0d0d0);border-radius:10px;padding:9px 12px');
-    inp.className='pj-new-name'; inp.placeholder='Project name'; inp.maxLength=40;
-    var add=el('button',BTN_ON,'Add'); add.className='pj-add';
-    var cancel=el('button',BTN,'Cancel');
-    var msg=el('div','font-size:12px;color:var(--amber,#a06010);min-height:14px');
-    add.onclick=function(){
-      var name=inp.value.replace(/\s+/g,' ').trim();
-      if(!name){msg.textContent='Give the project a name first.';return;}
-      var match=pjState().filter(function(p){return p.name.toLowerCase()===name.toLowerCase();})[0];
-      if(match){if(!match.active)pjAppend(match.name,true);S.project=match.name;}
-      else{pjAppend(name,true);S.project=name;}
-      extra.innerHTML='';fill();
-    };
-    inp.onkeydown=function(e){if(e.key==='Enter')add.onclick();};
-    cancel.onclick=function(){extra.innerHTML='';};
-    row.appendChild(inp);row.appendChild(add);row.appendChild(cancel);
-    extra.appendChild(row);extra.appendChild(msg);
-    setTimeout(function(){try{inp.focus();}catch(e){}},30);
+    row.innerHTML='';
+    var st=pjState(),list=st.filter(function(p){return p.active;}).map(function(p){return p.name;});
+    var cm={};st.forEach(function(p,i){cm[p.name.toLowerCase()]=PALETTE[i%PALETTE.length];});
+    if(S.project&&list.indexOf(S.project)<0)list.push(S.project);
+    list.forEach(function(p){
+      var on=S.project===p,b=btn('pj-tab'+(on?' sel':''),null,function(){S.project=on?null:p;fill();});
+      b.setAttribute('aria-pressed',on?'true':'false');
+      b.appendChild(dot(cm[p.toLowerCase()]||'#5d6d7e'));b.appendChild(document.createTextNode(p));
+      row.appendChild(b);
+    });
+    row.appendChild(btn('pj-tab quiet pj-new','+ New',function(){newProjectRow(extra,function(n){S.project=n;fill();});}));
+    row.appendChild(btn('pj-tab quiet pj-manage','Manage',showManage));
   }
   function showManage(){
     extra.innerHTML='';
-    var box=el('div','border:1px solid var(--border,#d0d0d0);border-radius:12px;padding:10px 12px;display:flex;flex-direction:column;gap:8px');
+    var box=el('div','pj-box');
     pjState().forEach(function(p){
-      var row=el('div','display:flex;align-items:center;gap:8px');
-      row.appendChild(el('div','flex:1;font-size:14px;'+(p.active?'color:var(--text,#111)':'color:var(--muted);text-decoration:line-through'),p.name));
-      var b=el('button',BTN,p.active?'Retire':'Restore');
-      b.className='pj-toggle';
-      b.onclick=function(){if(p.active&&S.project===p.name)S.project=null;pjAppend(p.name,!p.active);fill();showManage();};
-      row.appendChild(b);box.appendChild(row);
+      var r=el('div');r.style.cssText='display:flex;align-items:center;gap:8px';
+      var nm=el('div',null,p.name);nm.style.cssText='flex:1;font-size:14px;'+(p.active?'color:var(--text)':'color:var(--muted);text-decoration:line-through');
+      r.appendChild(nm);
+      r.appendChild(btn('pj-btn pj-toggle',p.active?'Retire':'Restore',function(){
+        if(p.active&&S.project===p.name)S.project=null;
+        pjAppend(p.name,!p.active);fill();showManage();}));
+      box.appendChild(r);
     });
-    box.appendChild(el('div','font-size:12px;color:var(--muted);line-height:1.4','Retiring a project hides it from this list. Its check-ins keep their project.'));
-    var done=el('button',BTN_ON,'Done'); done.style.alignSelf='flex-start';
-    done.onclick=function(){extra.innerHTML='';};
-    box.appendChild(done);extra.appendChild(box);
+    box.appendChild(el('div','pj-small','Retiring a project hides it from the tabs. Its check-ins keep their project.'));
+    var acts=el('div');acts.style.cssText='display:flex;gap:8px;flex-wrap:wrap';
+    acts.appendChild(btn('pj-btn on','Done',function(){extra.innerHTML='';}));
+    acts.appendChild(btn('pj-btn pj-open-tagger','Tag earlier check-ins…',function(){
+      window.phqOpenTagger({project:S.project,onClose:function(){fill();showManage();}});}));
+    box.appendChild(acts);extra.appendChild(box);
   }
-  sel.onchange=function(){
-    var v=sel.value;
-    if(v==='__new'){sel.value=S.project||'';showNew();return;}
-    if(v==='__manage'){sel.value=S.project||'';showManage();return;}
-    S.project=v||null;extra.innerHTML='';
-  };
-  fill();
-  wrap.appendChild(sel);wrap.appendChild(extra);
+  fill();wrap.appendChild(row);wrap.appendChild(extra);
   return wrap;
+};
+
+// ── tag earlier check-ins (all on this device; syncs privately) ─────────────
+function wordRe(w){var s=w.replace(/[.*+?^${}()|[\]\\]/g,'\\$&');return new RegExp('(^|[^a-z0-9])'+s+(w.length<=4?'(?![a-z0-9])':''));}
+function suggestFor(name){
+  var k=String(name||'').trim().toLowerCase(),words=[k,k.replace(/\s+/g,'')],res=[],seen={};
+  k.split(/\s+/).forEach(function(w){if(w.length>=4)words.push(w);});
+  (ALIASES[k]||[]).forEach(function(w){words.push(w);});
+  words.forEach(function(w){if(w&&!seen[w]){seen[w]=1;res.push([w,wordRe(w)]);}});
+  var hints=ITEM_HINTS[k]||[];
+  return function(e){
+    var hay=((e.items||[]).join(' · ')+' · '+(e.note||'')).toLowerCase();
+    for(var i=0;i<res.length;i++)if(res[i][1].test(hay))return 'mentions “'+res[i][0]+'”';
+    for(var j=0;j<hints.length;j++)if((e.lunadom||'')===hints[j][0]&&(e.items||[]).indexOf(hints[j][1])>-1)return hints[j][1];
+    return '';
+  };
+}
+window.phqOpenTagger=function(opts){
+  opts=opts||{};
+  var prev=document.getElementById('pj-tagger');if(prev)prev.remove();
+  var act=phqProjects();
+  var T={target:(opts.project&&act.indexOf(opts.project)>-1)?opts.project:(act[0]||null),mode:'suggest',
+         q:'',dom:'',untagged:true,sel:{},auto:true,msg:''};
+  var ov=el('div');ov.id='pj-tagger';ov.setAttribute('role','dialog');ov.setAttribute('aria-label','Tag check-ins');
+  var top=el('div','pt-top'),sp=el('div');sp.style.width='60px';
+  top.appendChild(btn('back-btn pt-back','← Back',function(){ov.remove();if(typeof opts.onClose==='function')opts.onClose();}));
+  top.appendChild(el('div','pt-title','Tag check-ins'));top.appendChild(sp);
+  var body=el('div','pt-body'),bar=el('div','pt-bar');
+  var apply=btn('pt-apply'),clear=btn('pj-btn pt-clear','Remove project');
+  bar.appendChild(apply);bar.appendChild(clear);
+  ov.appendChild(top);ov.appendChild(body);ov.appendChild(bar);document.body.appendChild(ov);
+  var sumBox,listBox,msgBox,cm={},all=[];
+
+  function rows(){
+    if(T.mode==='suggest'){
+      var why=T.target?suggestFor(T.target):function(){return'';};
+      return all.map(function(e){return{e:e,why:why(e)};}).filter(function(x){return x.why;});
+    }
+    var qs=T.q.toLowerCase().split(/\s+/).filter(Boolean);
+    return all.filter(function(e){
+      if(T.untagged&&e.project)return false;
+      if(T.dom&&domLabel(e)!==T.dom)return false;
+      if(!qs.length)return true;
+      var d=new Date(entryKey(e)),hay=[isNaN(d)?'':fmtDate(d),domLabel(e),(e.items||[]).join(' '),e.note||'',e.project||'',e.lynStatus||''].join(' ').toLowerCase();
+      return qs.every(function(w){return hay.indexOf(w)>-1;});
+    }).map(function(e){return{e:e,why:''};});
+  }
+  function updateBar(){
+    var n=Object.keys(T.sel).length;
+    apply.disabled=!n||!T.target;clear.disabled=!n;
+    apply.textContent=n?('Tag '+n+' as '+T.target):('Tick check-ins to tag as '+(T.target||'…'));
+  }
+  function rowEl(x){
+    var e=x.e,k=entryKey(e),d=new Date(k);
+    var r=el('label','pt-row'),cb=el('input');cb.type='checkbox';cb.checked=!!T.sel[k];
+    cb.onchange=function(){if(cb.checked)T.sel[k]=1;else delete T.sel[k];sumText();updateBar();};
+    var c=el('div');c.style.cssText='flex:1;min-width:0';
+    var meta=el('div','pt-meta');meta.appendChild(el('span',null,(isNaN(d)?'':fmtDate(d))+' · '+domLabel(e)));
+    if(e.project){var bd=el('span','pt-badge');bd.appendChild(dot(cm[e.project.toLowerCase()]||'#5d6d7e'));bd.appendChild(document.createTextNode(e.project));meta.appendChild(bd);}
+    c.appendChild(meta);
+    c.appendChild(el('div','pt-items',(e.items&&e.items.length)?e.items.join(' · '):(e.lynStatus?'Lyn: '+e.lynStatus:'No items')));
+    if(e.note)c.appendChild(el('div','pt-note',e.note.length>140?e.note.slice(0,139)+'…':e.note));
+    if(x.why)c.appendChild(el('div','pt-why',x.why));
+    r.appendChild(cb);r.appendChild(c);
+    return r;
+  }
+  var _shown=[];
+  function sumText(){if(sumBox&&sumBox.firstChild)sumBox.firstChild.textContent=_shown.length+' shown · '+Object.keys(T.sel).length+' selected';}
+  function renderList(){
+    all=allEntries().slice().sort(function(a,b){var A=entryKey(a),B=entryKey(b);return A<B?1:A>B?-1:0;});
+    cm=colorMap();
+    _shown=rows();
+    if(T.auto){_shown.forEach(function(x){if(!x.e.project)T.sel[entryKey(x.e)]=1;});T.auto=false;}
+    msgBox.textContent=T.msg;
+    listBox.innerHTML='';
+    _shown.slice(0,400).forEach(function(x){listBox.appendChild(rowEl(x));});
+    if(_shown.length>400)listBox.appendChild(el('div','pj-small','Showing the newest 400 — search to narrow it down.'));
+    if(!_shown.length)listBox.appendChild(el('div','pj-small',T.mode==='suggest'
+      ?'No suggestions for '+(T.target||'this project')+'. Try All check-ins and search.':'No check-ins match.'));
+    sumText();updateBar();
+  }
+  function render(){
+    body.innerHTML='';
+    cm=colorMap();
+    body.appendChild(el('div','pj-small','Pick a project, tick the check-ins that belong to it, then tag them. A tag can be changed any time. Everything stays in your own data.'));
+    body.appendChild(el('div','pt-sec','Project'));
+    var tabs=el('div','pj-tabs'),addHost=el('div');addHost.style.marginTop='8px';
+    phqProjects().forEach(function(p){
+      var b=btn('pj-tab pt-target'+(T.target===p?' sel':''),null,function(){
+        if(T.target!==p){T.target=p;T.sel={};T.auto=T.mode==='suggest';T.msg='';}render();});
+      b.appendChild(dot(cm[p.toLowerCase()]||'#5d6d7e'));b.appendChild(document.createTextNode(p));tabs.appendChild(b);
+    });
+    tabs.appendChild(btn('pj-tab quiet','+ New',function(){newProjectRow(addHost,function(n){T.target=n;T.sel={};T.auto=T.mode==='suggest';render();});}));
+    body.appendChild(tabs);body.appendChild(addHost);
+    body.appendChild(el('div','pt-sec','Check-ins'));
+    var modes=el('div','pj-tabs');
+    [['suggest','Suggested'],['all','All check-ins']].forEach(function(m){
+      modes.appendChild(btn('pj-tab pt-mode'+(T.mode===m[0]?' sel':''),m[1],function(){
+        if(T.mode!==m[0]){T.mode=m[0];T.sel={};T.auto=m[0]==='suggest';T.msg='';}render();}));
+    });
+    body.appendChild(modes);
+    if(T.mode==='all'){
+      var f=el('div');f.style.cssText='display:flex;flex-direction:column;gap:8px;margin-top:10px';
+      var q=el('input','pj-input pt-search');q.type='search';q.placeholder='Search items, notes, dates…';q.value=T.q;
+      q.oninput=function(){T.q=q.value;renderList();};
+      var r2=el('div');r2.style.cssText='display:flex;gap:10px;align-items:center;flex-wrap:wrap';
+      var ds=el('select','pj-input pt-dom');ds.add(new Option('All domains',''));
+      var cnt={};allEntries().forEach(function(e){var l=domLabel(e);cnt[l]=(cnt[l]||0)+1;});
+      Object.keys(cnt).sort(function(a,b){return cnt[b]-cnt[a];}).forEach(function(l){ds.add(new Option(l+' ('+cnt[l]+')',l));});
+      ds.value=T.dom;ds.onchange=function(){T.dom=ds.value;renderList();};
+      var ul=el('label','pj-small');ul.style.cssText='display:flex;gap:6px;align-items:center;cursor:pointer';
+      var uc=el('input','pt-untagged');uc.type='checkbox';uc.checked=T.untagged;uc.style.accentColor='#b8920f';
+      uc.onchange=function(){T.untagged=uc.checked;renderList();};
+      ul.appendChild(uc);ul.appendChild(document.createTextNode('Untagged only'));
+      r2.appendChild(ds);r2.appendChild(ul);f.appendChild(q);f.appendChild(r2);body.appendChild(f);
+    }
+    sumBox=el('div','pt-sum');sumBox.appendChild(el('span','pj-small'));
+    sumBox.appendChild(btn('pj-btn pt-all','Select all shown',function(){_shown.forEach(function(x){T.sel[entryKey(x.e)]=1;});T.msg='';renderList();}));
+    sumBox.appendChild(btn('pj-btn pt-none','Clear',function(){T.sel={};T.msg='';renderList();}));
+    msgBox=el('div','pt-msg');listBox=el('div','pt-list');
+    body.appendChild(sumBox);body.appendChild(msgBox);body.appendChild(listBox);
+    renderList();
+  }
+  apply.onclick=function(){
+    var keys=Object.keys(T.sel);if(!keys.length||!T.target)return;
+    tagEntries(keys,T.target);
+    T.msg='Tagged '+keys.length+' check-in'+(keys.length!==1?'s':'')+' as '+T.target+'.';T.sel={};renderList();
+  };
+  clear.onclick=function(){
+    var keys=Object.keys(T.sel);if(!keys.length)return;
+    tagEntries(keys,'');
+    T.msg='Took the project off '+keys.length+' check-in'+(keys.length!==1?'s':'')+'.';T.sel={};renderList();
+  };
+  render();
+};
+
+// ── Arakna + The Bloom: one coloured thread per project ─────────────────────
+// The thread runs through the items the project touched, in the order it first
+// touched them. Sub-domain (or domain) when a check-in has no items on the map.
+window.phqThreads=function(nodes,entries){
+  var items={},clusters={},domains={};
+  (nodes||[]).forEach(function(n){
+    if(n.type==='item')(items[n.name]=items[n.name]||[]).push(n);
+    else if(n.type==='cluster')clusters[n.key]=n;
+    else if(n.type==='domain')domains[n.key]=n;
+  });
+  var cm=colorMap(),by={},list=[];
+  (entries||[]).filter(function(e){return e&&e.project;})
+    .sort(function(a,b){var A=entryKey(a),B=entryKey(b);return A<B?-1:A>B?1:0;})
+    .forEach(function(e){
+      var p=e.project,t=by[p];
+      if(!t){t=by[p]={name:p,color:cm[p.toLowerCase()]||'#5d6d7e',pts:[],seen:{},n:0,m:0,doms:[]};list.push(t);}
+      t.n++;t.m+=(e.timeMins||0);
+      var dl=domLabel(e);if(t.doms.indexOf(dl)<0)t.doms.push(dl);
+      var dom=String(e.domain||'').toLowerCase(),ld=String(e.lunadom||'').toLowerCase(),hit=false;
+      function add(nd){if(nd&&!t.seen[nd.id]){t.seen[nd.id]=1;t.pts.push(nd);}}
+      (e.items||[]).forEach(function(it){
+        var c=items[it];if(!c)return;
+        add(c.filter(function(x){return ld&&x.clusterKey===ld;})[0]||c.filter(function(x){return x.dom===dom;})[0]||c[0]);hit=true;
+      });
+      if(!hit)add((ld&&clusters[ld])||domains[dom]);
+    });
+  return list.filter(function(t){return t.pts.length;}).sort(function(a,b){return(b.m-a.m)||(b.n-a.n);});
+};
+// pos(n) -> [x, y, radius] in the view's own coordinates; u = world units per CSS px
+window.phqDrawThreads=function(ctx,threads,u,pos){
+  if(!ctx||!threads||!threads.length)return;
+  var spot=window.__pjSpot||null;
+  ctx.save();ctx.setLineDash([]);ctx.lineCap='round';ctx.lineJoin='round';
+  for(var i=0;i<threads.length;i++){
+    var t=threads[i],on=!spot||spot===t.name,P=t.pts;
+    var passes=(spot&&on)?[['#ffffff',0.85,6],[t.color,0.95,3.2]]:[[t.color,spot?0.08:0.55,1.8]];
+    for(var q=0;q<passes.length;q++){
+      ctx.strokeStyle=passes[q][0];ctx.globalAlpha=passes[q][1];ctx.lineWidth=passes[q][2]*u;
+      ctx.beginPath();
+      if(P.length===1){var a=pos(P[0]);ctx.arc(a[0],a[1],(a[2]||10)+4*u,0,Math.PI*2);}
+      else{var a0=pos(P[0]);ctx.moveTo(a0[0],a0[1]);for(var j=1;j<P.length;j++){var b=pos(P[j]);ctx.lineTo(b[0],b[1]);}}
+      ctx.stroke();
+    }
+  }
+  ctx.restore();
+};
+// chips over the view: tap a project to follow its thread; onChange('rebuild') after tagging
+window.phqThreadBar=function(host,threads,onChange){
+  if(!host)return;
+  var bar=host.querySelector('.pj-threads');if(!bar){bar=el('div','pj-threads');host.appendChild(bar);}
+  bar.innerHTML='';
+  if(window.__pjSpot&&!threads.some(function(t){return t.name===window.__pjSpot;}))window.__pjSpot=null;
+  var row=el('div','pj-trow');
+  threads.forEach(function(t){
+    var on=window.__pjSpot===t.name,c=btn('pj-chip'+(on?' sel':''),null,function(){
+      window.__pjSpot=on?null:t.name;window.phqThreadBar(host,threads,onChange);if(onChange)onChange();});
+    if(on){c.style.color=t.color;c.style.borderColor=t.color;}
+    c.appendChild(dot(t.color));c.appendChild(document.createTextNode(t.name));row.appendChild(c);
+  });
+  row.appendChild(btn('pj-chip pj-tag-chip',threads.length?'+ Tag':'Tag check-ins to see project threads',function(){
+    window.phqOpenTagger({project:window.__pjSpot,onClose:function(){if(onChange)onChange('rebuild');}});}));
+  bar.appendChild(row);
+  var s=threads.filter(function(t){return t.name===window.__pjSpot;})[0];
+  if(s)bar.appendChild(el('div','pj-cap',s.name+' — '+s.n+' check-in'+(s.n!==1?'s':'')+' · '+hrs(s.m)+' · '+s.doms.join(', ')));
 };
 
 // Text block for the oracle prompts: each project read as one whole across domains.
@@ -6941,18 +7236,16 @@ window.projectThreadsText=function(entries,title){
   (entries||[]).forEach(function(e){
     if(!e||!e.project)return;
     var o=by[e.project]||(by[e.project]={n:0,m:0,dom:{},first:null,last:null});
-    var d=new Date(e.ts), k;
-    try{k=(typeof entryDomainLabel==='function')?entryDomainLabel(e):(e.lunadom||e.domain||'—');}catch(x){k=e.lunadom||e.domain||'—';}
-    o.n++; o.m+=(e.timeMins||0); o.dom[k]=(o.dom[k]||0)+(e.timeMins||0);
+    var d=new Date(entryKey(e)),k=domLabel(e);
+    o.n++;o.m+=(e.timeMins||0);o.dom[k]=(o.dom[k]||0)+(e.timeMins||0);
     if(!isNaN(d.getTime())){if(!o.first||d<o.first)o.first=d;if(!o.last||d>o.last)o.last=d;}
   });
-  var names=Object.keys(by); if(!names.length)return '';
-  var h=function(m){return m>=60?(Math.round(m/6)/10)+'h':m+'m';};
-  var f=function(d){return d?d.getDate()+' '+['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][d.getMonth()]+' '+d.getFullYear():'—';};
-  var lines=names.sort(function(a,b){return (by[b].m-by[a].m)||(by[b].n-by[a].n);}).map(function(p){
+  var names=Object.keys(by);if(!names.length)return '';
+  var f=function(d){return d?d.getDate()+' '+MONTHS[d.getMonth()]+' '+d.getFullYear():'—';};
+  var lines=names.sort(function(a,b){return(by[b].m-by[a].m)||(by[b].n-by[a].n);}).map(function(p){
     var o=by[p];
-    var doms=Object.keys(o.dom).sort(function(a,b){return o.dom[b]-o.dom[a];}).map(function(k){return k+(o.dom[k]?' '+h(o.dom[k]):'');}).join(', ');
-    return p+' — '+o.n+' check-in'+(o.n!==1?'s':'')+' · '+h(o.m)+(doms?' · '+doms:'')+' · '+f(o.first)+' → '+f(o.last);
+    var doms=Object.keys(o.dom).sort(function(a,b){return o.dom[b]-o.dom[a];}).map(function(k){return k+(o.dom[k]?' '+hrs(o.dom[k]):'');}).join(', ');
+    return p+' — '+o.n+' check-in'+(o.n!==1?'s':'')+' · '+hrs(o.m)+(doms?' · '+doms:'')+' · '+f(o.first)+' → '+f(o.last);
   });
   return (title||'PROJECTS')+' (threads that run across domains; read each as one whole):\n'+lines.join('\n')+'\n\n';
 };
