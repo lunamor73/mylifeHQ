@@ -7199,7 +7199,7 @@ window.phqDrawThreads=function(ctx,threads,u,pos){
   ctx.save();ctx.setLineDash([]);ctx.lineCap='round';ctx.lineJoin='round';
   for(var i=0;i<threads.length;i++){
     var t=threads[i],on=!spot||spot===t.name,P=t.pts;
-    var passes=(spot&&on)?[['#ffffff',0.85,6],[t.color,0.95,3.2]]:[[t.color,spot?0.08:0.55,1.8]];
+    var passes=[[t.color,spot?(on?1:0.08):0.6,(spot&&on)?1.3:0.9]];  // fine lines only
     for(var q=0;q<passes.length;q++){
       ctx.strokeStyle=passes[q][0];ctx.globalAlpha=passes[q][1];ctx.lineWidth=passes[q][2]*u;
       ctx.beginPath();
