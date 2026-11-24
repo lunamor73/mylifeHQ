@@ -2943,40 +2943,69 @@ function mundusCopy() {
     for (var i = 0; i < c.length; i++) if (MediaRecorder.isTypeSupported(c[i])) return c[i];
     return '';
   }
+  function makeRecorder(stream, mime) {
+    // Some browsers refuse a format or bitrate they claim to support, so try
+    // the preferred settings first, then plainer ones, then the browser's own
+    var tries = [], lastErr = null;
+    if (mime) { tries.push({ mimeType: mime, audioBitsPerSecond: 48000 }); tries.push({ mimeType: mime }); }
+    tries.push({ audioBitsPerSecond: 48000 });
+    tries.push(null);
+    for (var i = 0; i < tries.length; i++) {
+      try {
+        var r = tries[i] ? new MediaRecorder(stream, tries[i]) : new MediaRecorder(stream);
+        r.start(1000);
+        return r;
+      } catch (e) { lastErr = e; }
+    }
+    throw lastErr || new Error('This browser could not start recording.');
+  }
   function startRec(btn, status) {
     if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia || !window.MediaRecorder) {
-      status.textContent = "Recording isn't available here. Use your voice memo app, then Import memo.";
+      status.textContent = "Recording isn't available in this browser. Use your voice memo app, then Import memo.";
       return;
     }
+    status.textContent = 'Starting the microphone…';
     navigator.mediaDevices.getUserMedia({ audio: true }).then(function (stream) {
+      var stopTracks = function () { stream.getTracks().forEach(function (t) { t.stop(); }); };
       recChunks = [];
-      var mime = pickMime(), opts = { audioBitsPerSecond: 48000 };
-      if (mime) opts.mimeType = mime;
-      try { rec = new MediaRecorder(stream, opts); } catch (e) { rec = new MediaRecorder(stream); }
+      var mime = pickMime();
+      try { rec = makeRecorder(stream, mime); }
+      catch (err) {
+        stopTracks(); rec = null;
+        status.textContent = "The microphone is on but this browser wouldn't record (" + (err && (err.name || err.message) || 'unknown') + "). Try the app in a normal Safari or Chrome window, or use Import memo.";
+        return;
+      }
       rec.ondataavailable = function (e) { if (e.data && e.data.size) recChunks.push(e.data); };
+      rec.onerror = function (e) {
+        var er = e && (e.error || e);
+        status.textContent = 'Recording stopped with an error (' + ((er && (er.name || er.message)) || 'unknown') + ').';
+      };
       rec.onstop = function () {
         var dur = (Date.now() - recStart) / 1000;
         clearInterval(recTimer);
-        stream.getTracks().forEach(function (t) { t.stop(); });
+        stopTracks();
         try { if (wakeLock) wakeLock.release(); } catch (e) {}
         wakeLock = null;
-        var type = (rec && rec.mimeType) || mime || 'audio/mp4';
-        var blob = new Blob(recChunks, { type: type });
+        var type = (rec && rec.mimeType) || mime || (recChunks[0] && recChunks[0].type) || 'audio/mp4';
         rec = null;
         btn.textContent = '● Record'; btn.classList.remove('rec-on');
+        if (!recChunks.length) { status.textContent = 'No sound was captured. Check the input device in your sound settings, then try again.'; return; }
+        var blob = new Blob(recChunks, { type: type });
         status.textContent = 'Saving…';
         addClip(blob, type, dur, 'recorded')
-          .then(function () { status.textContent = 'Saved on this phone. It syncs when you are signed in and online.'; })
+          .then(function () { status.textContent = 'Saved on this device. It syncs when you are signed in and online.'; })
           .catch(function (e) { status.textContent = "Couldn't save the recording: " + (e && e.message || e); });
       };
-      rec.start(1000);
       recStart = Date.now();
       btn.textContent = '■ Stop'; btn.classList.add('rec-on');
       status.textContent = 'Recording 0:00 · keep the screen on';
       recTimer = setInterval(function () { status.textContent = 'Recording ' + fmtDur((Date.now() - recStart) / 1000) + ' · keep the screen on'; }, 500);
       try { if (navigator.wakeLock) navigator.wakeLock.request('screen').then(function (w) { wakeLock = w; }).catch(function () {}); } catch (e) {}
-    }).catch(function () {
-      status.textContent = 'The microphone is blocked. Allow it for this app in Settings, or record in your voice memo app and Import memo.';
+    }).catch(function (err) {
+      var n = err && err.name;
+      if (n === 'NotAllowedError' || n === 'SecurityError') status.textContent = 'The microphone is blocked for this app. Allow it in Settings, or record in your voice memo app and Import memo.';
+      else if (n === 'NotFoundError') status.textContent = 'No microphone was found. Check your sound input, or use Import memo.';
+      else status.textContent = "Couldn't start the microphone (" + (n || (err && err.message) || 'unknown') + ').';
     });
   }
   function stopRec() { if (rec && rec.state !== 'inactive') rec.stop(); }
