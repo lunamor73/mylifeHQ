@@ -1,6 +1,6 @@
 // mylifeHQ Service Worker
 // Bump CACHE_NAME whenever you push an update — forces all saved PWAs to refresh
-const CACHE_NAME = 'mylifehq-20261124-transcribe';
+const CACHE_NAME = 'mylifehq-20261124-offline2';
 // Libraries are pinned to exact versions, so they live in their own cache that survives app updates
 const LIB_CACHE = 'mylifehq-lib-v1';
 const CORE_FILES = [
@@ -58,7 +58,10 @@ function networkWithTimeout(req) {
   return new Promise(resolve => {
     let settled = false;
     const finish = r => { if (!settled && r) { settled = true; resolve(r); } };
-    const fromCache = () => caches.match(req, { ignoreSearch: true });
+    // Opening the app with no signal: if this exact address isn't saved (the
+    // home-screen icon can point at the folder, or carry ?…), open the saved app
+    const fromCache = () => caches.match(req, { ignoreSearch: true }).then(hit =>
+      hit || (req.mode === 'navigate' ? caches.match('./mylifeHQoraculum.html', { ignoreSearch: true }) : undefined));
     const timer = setTimeout(() => { fromCache().then(finish); }, NET_TIMEOUT_MS);
     fetch(req.clone())
       .then(res => { clearTimeout(timer); finish(putInCache(req, res)); })
