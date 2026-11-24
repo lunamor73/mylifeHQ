@@ -1,9 +1,12 @@
 // mylifeHQ Service Worker
 // Bump CACHE_NAME whenever you push an update — forces all saved PWAs to refresh
-const CACHE_NAME = 'mylifehq-20261122-dreams';
+const CACHE_NAME = 'mylifehq-20261124-transcribe';
+// Libraries are pinned to exact versions, so they live in their own cache that survives app updates
+const LIB_CACHE = 'mylifehq-lib-v1';
 const CORE_FILES = [
   './mylifeHQoraculum.html',
   './mylifeHQmundus.html',
+  './whisper-worker.js',
 ];
 // v3.34: also keep the sync library and home-screen icon, so the app opens with no signal
 const EXTRA_FILES = [
@@ -21,7 +24,9 @@ self.addEventListener('install', e => {
   e.waitUntil(
     caches.open(CACHE_NAME).then(cache =>
       cache.addAll(CORE_FILES).then(() =>
-        Promise.all(EXTRA_FILES.map(u => cache.add(u).catch(() => {})))
+        caches.open(LIB_CACHE).then(lib =>
+          Promise.all(EXTRA_FILES.map(u => (u.startsWith('http') ? lib : cache).add(u).catch(() => {})))
+        )
       )
     )
   );
@@ -32,16 +37,18 @@ self.addEventListener('activate', e => {
   e.waitUntil(
     caches.keys()
       .then(keys => Promise.all(
-        keys.filter(k => k !== CACHE_NAME).map(k => caches.delete(k))
+        // Only clear this app's old copies; keep the library cache and the
+        // transcriber's model cache (transformers-cache) between updates
+        keys.filter(k => k.startsWith('mylifehq-') && k !== CACHE_NAME && k !== LIB_CACHE).map(k => caches.delete(k))
       ))
       .then(() => self.clients.claim())
   );
 });
 
-function putInCache(req, res) {
+function putInCache(req, res, cacheName) {
   if (res && res.ok) {
     const clone = res.clone();
-    caches.open(CACHE_NAME).then(cache => cache.put(req, clone));
+    caches.open(cacheName || CACHE_NAME).then(cache => cache.put(req, clone));
   }
   return res;
 }
@@ -68,13 +75,18 @@ self.addEventListener('fetch', e => {
   if (req.method !== 'GET') return;
   const url = new URL(req.url);
 
-  // Live sync and sign-in traffic goes straight through, never cached
+  // Live sync and sign-in traffic goes straight through, never cached.
+  // So do the transcriber's model files: Transformers.js keeps those itself.
   if (url.hostname.endsWith('googleapis.com') || url.hostname.endsWith('firebaseapp.com')) return;
+  if (url.hostname === 'huggingface.co' || url.hostname.endsWith('.huggingface.co') || url.hostname.endsWith('.hf.co')) return;
 
-  // The pinned Firebase library never changes at a given version: phone copy first
-  if (url.hostname === 'www.gstatic.com' && url.pathname.startsWith('/firebasejs/')) {
+  // Pinned libraries (Firebase, Transformers.js and its runtime) never change
+  // at a given version: phone copy first, kept across app updates
+  const pinnedLib = (url.hostname === 'www.gstatic.com' && url.pathname.startsWith('/firebasejs/')) ||
+                    (url.hostname === 'cdn.jsdelivr.net' && /@\d+\.\d+\.\d+/.test(url.pathname));
+  if (pinnedLib) {
     e.respondWith(
-      caches.match(req).then(hit => hit || fetch(req).then(res => putInCache(req, res)))
+      caches.match(req).then(hit => hit || fetch(req).then(res => putInCache(req, res, LIB_CACHE)))
     );
     return;
   }

@@ -754,7 +754,7 @@ function goToCheckin(domain, lunadom) {
   S.zpd = null; S.direction = null; S.exchange = null; S.project = null;
   S.timePads = new Set();
   S.note = ''; S.saved = false;
-  S.audio = [];
+  S.audio = []; S.dreamText = '';
 
   let title, backTarget;
   if (lunadom) {
@@ -1306,6 +1306,7 @@ function generatePrompt() {
   if (S.project)   lines.push(`Project: ${S.project}`);
   lines.push(`Time: ${fmtTime()}`);
   if (S.note) lines.push('', `Note: ${S.note}`);
+  if (S.dreamText && S.dreamText.trim()) lines.push('', `Dream (in my words): ${S.dreamText.trim()}`);
   if (S.audio && S.audio.length) { const _t = S.audio.reduce((t, a) => t + (a.dur || 0), 0); lines.push('', `Dream audio: ${S.audio.length} recording${S.audio.length > 1 ? 's' : ''}, ${lhqFmtDur(_t)} (kept in the app)`); }
   lines.push('', '---', 'Penguin HQ check-in. Ready for Claude.');
 
@@ -1408,7 +1409,7 @@ function showConf(msg) {
 function resetAll() {
   S.domain = null; S.lunadom = null; S.items = new Set();
   S.lynStatus = null; S.zpd = null; S.direction = null; S.exchange = null; S.project = null;
-  S.timePads = new Set(); S.note = ''; S.saved = false; S.savedId = null; S.audio = [];
+  S.timePads = new Set(); S.note = ''; S.saved = false; S.savedId = null; S.audio = []; S.dreamText = '';
   nav('p1');
 }
 
@@ -1426,6 +1427,7 @@ function saveCheckIn(promptText) {
     items: [...S.items], lynStatus: S.lynStatus,
     zpd: S.zpd, direction: S.direction, exchange: S.exchange, project: S.project || null,
     audio: (S.audio && S.audio.length) ? S.audio.map(a => ({ id: a.id, mime: a.mime, dur: a.dur, size: a.size })) : undefined,
+    dreamText: (S.dreamText && S.dreamText.trim()) ? S.dreamText.trim() : undefined,
     timeMins: totalMins(), note: S.note, prompt: promptText
   };
   const hist = getHistory();
@@ -1507,7 +1509,7 @@ function buildHistoryPage() {
       safeWriteClipboard(txt, done); // v3.10
     };
     exp.appendChild(promptTxt); exp.appendChild(copyBtn);
-    if (entry.audio && entry.audio.length && typeof lhqAudioPlayers === 'function') exp.appendChild(lhqAudioPlayers(entry.audio));
+    if (entry.audio && entry.audio.length && typeof lhqAudioPlayers === 'function') exp.appendChild(lhqAudioPlayers(entry.audio, entry));
     const inner = mk('div'); inner.className = 'hist-inner';
     inner.appendChild(hdr); inner.appendChild(exp);
     const delBg = mk('div'); delBg.className = 'hist-del-bg'; delBg.textContent = '🗑 Delete';
@@ -2847,10 +2849,14 @@ function mundusCopy() {
 .dr-hist { margin-top:10px; }
 .dr-clip { display:flex; align-items:center; gap:8px; font-size:13px; color:var(--text); }
 .dr-clip span { flex:1; }
+.dr-words { width:100%; min-height:110px; margin-top:10px; }
 .dr-mini { min-width:36px; height:32px; border-radius:8px; border:1px solid var(--border); background:var(--surface); color:var(--text); font-size:13px; cursor:pointer; }
 </style>
 <script>
 /* ── v3.34 (22 Nov 2026): Dreams — record or import dream audio ─────────────
+   v3.35 (24 Nov 2026): "Dream in my words" box, and on-phone transcription
+   (Whisper, run by whisper-worker.js; the model downloads once, then works
+   offline, and the audio never leaves the phone for this).
    Clips are saved on this phone first (IndexedDB), so recording works with no
    signal. When signed in and online, each clip is also copied to the person's
    private space (users/{uid}/audio/...). Check-in entries carry only each
@@ -3000,8 +3006,63 @@ function mundusCopy() {
     }).catch(function () { btn.textContent = '⚠'; });
   }
 
+  // ── Transcription (on this phone) ─────────────────────────────────────────
+  var _worker = null, _jobs = {}, _jobN = 0;
+  function worker() {
+    if (_worker) return _worker;
+    _worker = new Worker('./whisper-worker.js', { type: 'module' });
+    _worker.onmessage = function (e) {
+      var m = e.data, j = _jobs[m.id]; if (!j) return;
+      if (m.type === 'progress') j.onStatus('Downloading the transcriber (first time only, about 75 MB) ' + Math.round(m.progress || 0) + '%');
+      else if (m.type === 'status') j.onStatus(m.text);
+      else if (m.type === 'done') { delete _jobs[m.id]; j.resolve(m.text); }
+      else if (m.type === 'error') { delete _jobs[m.id]; j.reject(new Error(m.text)); }
+    };
+    _worker.onerror = function (e) {
+      Object.keys(_jobs).forEach(function (k) { _jobs[k].reject(new Error(e.message || 'The transcriber stopped.')); delete _jobs[k]; });
+      _worker = null;
+    };
+    return _worker;
+  }
+  function decode16k(c) {
+    var AC = window.AudioContext || window.webkitAudioContext;
+    var ac = new AC();
+    return new Promise(function (res, rej) {
+      ac.decodeAudioData(c.buf.slice(0), res, rej);
+    }).then(function (ab) {
+      try { ac.close(); } catch (e) {}
+      var OAC = window.OfflineAudioContext || window.webkitOfflineAudioContext;
+      var len = Math.max(1, Math.ceil(ab.duration * 16000));
+      var oac = new OAC(1, len, 16000);
+      var src = oac.createBufferSource(); src.buffer = ab; src.connect(oac.destination); src.start(0);
+      var r = oac.startRendering();
+      return (r && r.then) ? r : new Promise(function (ok) { oac.oncomplete = function (ev) { ok(ev.renderedBuffer); }; });
+    }).then(function (rb) { return rb.getChannelData(0); });
+  }
+  function transcribeClip(id, onStatus) {
+    onStatus = onStatus || function () {};
+    onStatus('Getting the recording…');
+    return getClip(id).then(function (c) {
+      if (c) return c;
+      if (window.lhqAudioCloud && window.lhqAudioCloud.ready()) return window.lhqAudioCloud.get(id);
+      return null;
+    }).then(function (c) {
+      if (!c) throw new Error('That recording is not on this phone yet.');
+      onStatus('Preparing the audio…');
+      return decode16k(c);
+    }).then(function (samples) {
+      return new Promise(function (resolve, reject) {
+        var jid = ++_jobN;
+        _jobs[jid] = { resolve: resolve, reject: reject, onStatus: onStatus };
+        var copy = new Float32Array(samples);
+        worker().postMessage({ id: jid, audio: copy }, [copy.buffer]);
+      });
+    });
+  }
+  window.lhqTranscribeClip = transcribeClip;
+
   // ── Check-in panel ────────────────────────────────────────────────────────
-  var _listEl = null;
+  var _listEl = null, _wordsEl = null, _statusEl = null;
   function renderList() {
     if (!_listEl) return;
     _listEl.innerHTML = '';
@@ -3016,13 +3077,29 @@ function mundusCopy() {
         if (!confirm('Remove this recording?')) return;
         S.audio.splice(i, 1); delClip(m.id).catch(function () {}); renderList();
       };
-      row.appendChild(lbl); row.appendChild(play); row.appendChild(rm);
+      var tr = document.createElement('button'); tr.className = 'dr-mini'; tr.textContent = '✎'; tr.setAttribute('aria-label', 'Transcribe');
+      tr.title = 'Transcribe into Dream in my words';
+      tr.onclick = function (e) {
+        e.preventDefault();
+        if (tr.disabled) return; tr.disabled = true;
+        transcribeClip(m.id, function (t) { if (_statusEl) _statusEl.textContent = t; })
+          .then(function (text) {
+            if (_wordsEl) {
+              _wordsEl.value = (_wordsEl.value.trim() ? _wordsEl.value.trim() + '\n\n' : '') + (text || '');
+              S.dreamText = _wordsEl.value;
+            }
+            if (_statusEl) _statusEl.textContent = text ? 'Transcribed. Check the words, then Generate.' : 'No words were heard in that recording.';
+          })
+          .catch(function (err) { if (_statusEl) _statusEl.textContent = "Couldn't transcribe: " + err.message + ' You can still type or dictate below.'; })
+          .then(function () { tr.disabled = false; });
+      };
+      row.appendChild(lbl); row.appendChild(play); row.appendChild(tr); row.appendChild(rm);
       _listEl.appendChild(row);
     });
   }
 
   window.lhqDreamPanel = function () {
-    S.audio = [];
+    S.audio = []; S.dreamText = '';
     var w = document.createElement('div'); w.id = 'dream-panel'; w.hidden = !(S.items && S.items.has('Dreams'));
     var l = document.createElement('div'); l.className = 'sec-label'; l.textContent = 'Dream audio';
     var bar = document.createElement('div'); bar.className = 'dr-bar';
@@ -3044,8 +3121,13 @@ function mundusCopy() {
         .catch(function (e) { status.textContent = "Couldn't import: " + (e && e.message || e); });
     };
     _listEl = document.createElement('div'); _listEl.className = 'dr-list';
+    _statusEl = status;
+    var wl = document.createElement('div'); wl.className = 'sec-label'; wl.textContent = 'Dream in my words';
+    _wordsEl = document.createElement('textarea'); _wordsEl.className = 'dr-words';
+    _wordsEl.placeholder = 'Tap ✎ on a recording to transcribe it here. Or type, use the keyboard mic to dictate, or paste a Voice Memos transcript.';
+    _wordsEl.oninput = function () { S.dreamText = _wordsEl.value; };
     bar.appendChild(recBtn); bar.appendChild(impBtn);
-    w.appendChild(l); w.appendChild(bar); w.appendChild(status); w.appendChild(_listEl); w.appendChild(file);
+    w.appendChild(l); w.appendChild(bar); w.appendChild(status); w.appendChild(_listEl); w.appendChild(wl); w.appendChild(_wordsEl); w.appendChild(file);
     return w;
   };
   window.lhqDreamSync = function () {
@@ -3055,15 +3137,59 @@ function mundusCopy() {
   };
 
   // ── History playback ──────────────────────────────────────────────────────
-  window.lhqAudioPlayers = function (list) {
+  var FOOT = '\n\n---\nPenguin HQ check-in.';
+  var WORDS_RE = /\n\nDream \(in my words\): [\s\S]*?(?=\n\nDream audio:|\n\n---\nPenguin HQ check-in\.)/;
+  function addWordsToEntry(entryId, text) {
+    var key = 'phq-history', hist;
+    try { hist = JSON.parse(localStorage.getItem(key) || '[]'); } catch (e) { return false; }
+    var e = hist.find(function (x) { return x && x.id === entryId; });
+    if (!e) return false;
+    e.dreamText = (e.dreamText ? e.dreamText + '\n\n' : '') + text;
+    var block = '\n\nDream (in my words): ' + e.dreamText;
+    var p = e.prompt || '';
+    if (WORDS_RE.test(p)) p = p.replace(WORDS_RE, block);
+    else if (p.indexOf('\n\nDream audio:') > -1) p = p.replace('\n\nDream audio:', block + '\n\nDream audio:');
+    else if (p.indexOf(FOOT) > -1) p = p.replace(FOOT, block + FOOT);
+    else p = p + block;
+    e.prompt = p;
+    localStorage.setItem(key, JSON.stringify(hist));
+    return true;
+  }
+
+  window.lhqAudioPlayers = function (list, entry) {
     var w = document.createElement('div'); w.className = 'dr-list dr-hist';
     list.forEach(function (m, i) {
       var row = document.createElement('div'); row.className = 'dr-clip';
       var lbl = document.createElement('span'); lbl.textContent = 'Dream audio ' + (i + 1) + ' · ' + fmtDur(m.dur);
       var b = document.createElement('button'); b.className = 'dr-mini'; b.textContent = '▶'; b.setAttribute('aria-label', 'Play');
       b.onclick = function (e) { e.stopPropagation(); playClip(m.id, b); };
-      row.appendChild(lbl); row.appendChild(b); w.appendChild(row);
+      row.appendChild(lbl); row.appendChild(b);
+      if (entry && entry.id) {
+        var t = document.createElement('button'); t.className = 'dr-mini'; t.textContent = '✎'; t.setAttribute('aria-label', 'Transcribe');
+        t.onclick = function (e) {
+          e.stopPropagation();
+          if (t.disabled) return; t.disabled = true;
+          transcribeClip(m.id, function (s) { st.textContent = s; })
+            .then(function (text) {
+              if (!text) { st.textContent = 'No words were heard in that recording.'; return; }
+              addWordsToEntry(entry.id, text);
+              st.textContent = 'Transcribed and added to this check-in.';
+              setTimeout(function () { try { buildHistoryPage(); } catch (e2) {} }, 1200);
+            })
+            .catch(function (err) { st.textContent = "Couldn't transcribe: " + err.message; })
+            .then(function () { t.disabled = false; });
+        };
+        row.appendChild(t);
+      }
+      w.appendChild(row);
     });
+    var st = document.createElement('div'); st.className = 'dr-status';
+    w.appendChild(st);
+    if (entry && entry.dreamText) {
+      var words = document.createElement('div'); words.className = 'dr-status'; words.style.whiteSpace = 'pre-wrap';
+      words.textContent = 'Dream in my words: ' + entry.dreamText;
+      w.appendChild(words);
+    }
     return w;
   };
 
