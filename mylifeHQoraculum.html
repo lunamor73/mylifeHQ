@@ -2850,6 +2850,9 @@ function mundusCopy() {
 .dr-clip { display:flex; align-items:center; gap:8px; font-size:13px; color:var(--text); }
 .dr-clip span { flex:1; }
 .dr-words { width:100%; min-height:110px; margin-top:10px; }
+.dr-mic { width:100%; margin-top:8px; padding:8px 10px; border-radius:10px; border:1px solid var(--border); background:var(--surface); color:var(--text); font-size:13px; }
+.dr-meter { height:6px; border-radius:3px; background:var(--border); margin-top:8px; overflow:hidden; }
+.dr-meter > div { height:100%; width:0; background:var(--green, #3a9a6a); transition:width .08s linear; }
 .dr-mini { min-width:36px; height:32px; border-radius:8px; border:1px solid var(--border); background:var(--surface); color:var(--text); font-size:13px; cursor:pointer; }
 </style>
 <script>
@@ -2943,6 +2946,62 @@ function mundusCopy() {
     for (var i = 0; i < c.length; i++) if (MediaRecorder.isTypeSupported(c[i])) return c[i];
     return '';
   }
+  // v3.36: input level meter, microphone choice, and a silence check
+  var _ac = null, _an = null, _src = null, _raf = 0, _peak = 0, _measured = false, _lastPeak = 1, _meterEl = null, _micSel = null, _micLabel = '';
+  function micId() { try { return localStorage.getItem('lhq-mic') || ''; } catch (e) { return ''; } }
+  function micConstraint() { var id = micId(); return id ? { deviceId: { exact: id } } : true; }
+  function fillMics() {
+    if (!_micSel || !navigator.mediaDevices || !navigator.mediaDevices.enumerateDevices) return;
+    navigator.mediaDevices.enumerateDevices().then(function (ds) {
+      var ins = ds.filter(function (d) { return d.kind === 'audioinput' && d.deviceId && d.deviceId !== 'default' && d.deviceId !== 'communications'; });
+      var cur = micId();
+      _micSel.innerHTML = '';
+      var o0 = document.createElement('option'); o0.value = ''; o0.textContent = 'Microphone: system default'; _micSel.appendChild(o0);
+      ins.forEach(function (d, i) {
+        var o = document.createElement('option'); o.value = d.deviceId;
+        o.textContent = 'Microphone: ' + (d.label || ('input ' + (i + 1)));
+        if (d.deviceId === cur) o.selected = true;
+        _micSel.appendChild(o);
+      });
+      _micSel.hidden = ins.length < 2;
+    }).catch(function () {});
+  }
+  function startMeter(stream) {
+    _peak = 0; _measured = false;
+    try { var t = stream.getAudioTracks()[0]; _micLabel = t ? t.label : ''; } catch (e) { _micLabel = ''; }
+    try {
+      var AC = window.AudioContext || window.webkitAudioContext;
+      _ac = new AC(); if (_ac.resume) _ac.resume().catch(function () {});
+      _src = _ac.createMediaStreamSource(stream); _an = _ac.createAnalyser(); _an.fftSize = 1024;
+      _src.connect(_an);
+      var buf = new Float32Array(_an.fftSize);
+      var tick = function () {
+        if (!_an) return;
+        if (_ac.state === 'running') {
+          _measured = true;
+          _an.getFloatTimeDomainData(buf);
+          var m = 0; for (var i = 0; i < buf.length; i++) { var v = Math.abs(buf[i]); if (v > m) m = v; }
+          if (m > _peak) _peak = m;
+          if (_meterEl) _meterEl.style.width = Math.min(100, Math.round(m * 160)) + '%';
+        }
+        _raf = requestAnimationFrame(tick);
+      };
+      tick();
+    } catch (e) { _measured = false; }
+  }
+  function stopMeter() {
+    _lastPeak = _measured ? _peak : 1;   // no reading available: don't warn
+    try { cancelAnimationFrame(_raf); } catch (e) {}
+    try { if (_src) _src.disconnect(); } catch (e) {}
+    try { if (_ac) _ac.close(); } catch (e) {}
+    _ac = _an = _src = null;
+    if (_meterEl) _meterEl.style.width = '0%';
+  }
+  function peakOf(samples) {
+    var m = 0; for (var i = 0; i < samples.length; i++) { var v = samples[i] < 0 ? -samples[i] : samples[i]; if (v > m) m = v; }
+    return m;
+  }
+
   function makeRecorder(stream, mime) {
     // Some browsers refuse a format or bitrate they claim to support, so try
     // the preferred settings first, then plainer ones, then the browser's own
@@ -2965,8 +3024,9 @@ function mundusCopy() {
       return;
     }
     status.textContent = 'Starting the microphone…';
-    navigator.mediaDevices.getUserMedia({ audio: true }).then(function (stream) {
-      var stopTracks = function () { stream.getTracks().forEach(function (t) { t.stop(); }); };
+    navigator.mediaDevices.getUserMedia({ audio: micConstraint() }).then(function (stream) {
+      var stopTracks = function () { stopMeter(); stream.getTracks().forEach(function (t) { t.stop(); }); };
+      startMeter(stream); fillMics();
       recChunks = [];
       var mime = pickMime();
       try { rec = makeRecorder(stream, mime); }
@@ -2993,7 +3053,11 @@ function mundusCopy() {
         var blob = new Blob(recChunks, { type: type });
         status.textContent = 'Saving…';
         addClip(blob, type, dur, 'recorded')
-          .then(function () { status.textContent = 'Saved on this device. It syncs when you are signed in and online.'; })
+          .then(function () {
+            status.textContent = _lastPeak < 0.02
+              ? 'Saved, but almost no sound came through' + (_micLabel ? ' from ' + _micLabel : '') + '. Choose another microphone above (if shown) or check your Mac\'s sound input, then record again.'
+              : 'Saved on this device. It syncs when you are signed in and online.';
+          })
           .catch(function (e) { status.textContent = "Couldn't save the recording: " + (e && e.message || e); });
       };
       recStart = Date.now();
@@ -3004,6 +3068,7 @@ function mundusCopy() {
     }).catch(function (err) {
       var n = err && err.name;
       if (n === 'NotAllowedError' || n === 'SecurityError') status.textContent = 'The microphone is blocked for this app. Allow it in Settings, or record in your voice memo app and Import memo.';
+      else if ((n === 'OverconstrainedError' || n === 'NotFoundError') && micId()) { try { localStorage.removeItem('lhq-mic'); } catch (e) {} fillMics(); status.textContent = 'The chosen microphone isn\'t connected, so the app is back on the system default. Tap Record again.'; }
       else if (n === 'NotFoundError') status.textContent = 'No microphone was found. Check your sound input, or use Import memo.';
       else status.textContent = "Couldn't start the microphone (" + (n || (err && err.message) || 'unknown') + ').';
     });
@@ -3031,7 +3096,8 @@ function mundusCopy() {
       var u = URL.createObjectURL(new Blob([c.buf], { type: c.mime })), a = new Audio(u);
       _cur = { id: id, a: a, u: u, b: btn };
       a.onended = function () { btn.textContent = '▶'; try { URL.revokeObjectURL(u); } catch (e) {} _cur = null; };
-      a.play().then(function () { btn.textContent = '❚❚'; }).catch(function () { btn.textContent = '▶'; });
+      a.onerror = function () { btn.textContent = '⚠'; btn.title = "This device can't play this recording's format (" + c.mime + ').'; _cur = null; };
+      a.play().then(function () { btn.textContent = '❚❚'; }).catch(function () { btn.textContent = '⚠'; btn.title = "Couldn't play (" + c.mime + ').'; _cur = null; });
     }).catch(function () { btn.textContent = '⚠'; });
   }
 
@@ -3080,11 +3146,17 @@ function mundusCopy() {
       onStatus('Preparing the audio…');
       return decode16k(c);
     }).then(function (samples) {
+      var pk = peakOf(samples);
+      if (pk < 0.01) throw new Error('That recording is silent, so there was nothing to transcribe. Check the microphone and record again.');
       return new Promise(function (resolve, reject) {
         var jid = ++_jobN;
         _jobs[jid] = { resolve: resolve, reject: reject, onStatus: onStatus };
         var copy = new Float32Array(samples);
         worker().postMessage({ id: jid, audio: copy }, [copy.buffer]);
+      }).then(function (text) {
+        // Whisper says "you" or "thank you" when it hears near-silence
+        if (pk < 0.06 && /^\W*(you|thank you|thanks for watching)\W*$/i.test(text || '')) return '';
+        return text;
       });
     });
   }
@@ -3155,8 +3227,12 @@ function mundusCopy() {
     _wordsEl = document.createElement('textarea'); _wordsEl.className = 'dr-words';
     _wordsEl.placeholder = 'Tap ✎ on a recording to transcribe it here. Or type, use the keyboard mic to dictate, or paste a Voice Memos transcript.';
     _wordsEl.oninput = function () { S.dreamText = _wordsEl.value; };
+    _micSel = document.createElement('select'); _micSel.className = 'dr-mic'; _micSel.hidden = true; _micSel.setAttribute('aria-label', 'Microphone');
+    _micSel.onchange = function () { try { localStorage.setItem('lhq-mic', _micSel.value); } catch (e) {} };
+    var meter = document.createElement('div'); meter.className = 'dr-meter'; _meterEl = document.createElement('div'); meter.appendChild(_meterEl);
+    fillMics();
     bar.appendChild(recBtn); bar.appendChild(impBtn);
-    w.appendChild(l); w.appendChild(bar); w.appendChild(status); w.appendChild(_listEl); w.appendChild(wl); w.appendChild(_wordsEl); w.appendChild(file);
+    w.appendChild(l); w.appendChild(bar); w.appendChild(_micSel); w.appendChild(meter); w.appendChild(status); w.appendChild(_listEl); w.appendChild(wl); w.appendChild(_wordsEl); w.appendChild(file);
     return w;
   };
   window.lhqDreamSync = function () {

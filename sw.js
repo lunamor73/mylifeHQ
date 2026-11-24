@@ -1,6 +1,6 @@
 // mylifeHQ Service Worker
 // Bump CACHE_NAME whenever you push an update — forces all saved PWAs to refresh
-const CACHE_NAME = 'mylifehq-20261124-rec2';
+const CACHE_NAME = 'mylifehq-20261124-mic3';
 // Libraries are pinned to exact versions, so they live in their own cache that survives app updates
 const LIB_CACHE = 'mylifehq-lib-v1';
 const CORE_FILES = [
